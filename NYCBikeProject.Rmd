@@ -17,3 +17,6 @@ This is a master project
 
 ```
 
+## Sources
+https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
+https://www.citibikenyc.com/system-data
