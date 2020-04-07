@@ -1,0 +1,14 @@
+---
+title: "NYCBikeProject"
+author: "Laura, Felix"
+date: "7 4 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## NYC bike project
+
+This is a master project
