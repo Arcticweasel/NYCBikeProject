@@ -4,7 +4,7 @@
 # Transformation functions
 as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 
-# Winsorize
+# Winsorize -> ausreißer anpassen
 
 winsorize <- function (x, fraction = .05) {
   if(length(fraction) != 1 || fraction < 0 || fraction > 0.5) {
