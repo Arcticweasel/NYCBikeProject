@@ -9,13 +9,52 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## NYC bike project
+# Load Packages
+
+```{r}
+library(tidyverse)
+```
+
+
+# NYC bike project
 
 This is a master project
 
+## Load data
+
 ```{r}
 
+
 ```
+
+## preprocessing
+
+### missing values
+
+### tidy data
+
+### agregate data
+
+
+## visualization
+
+### heat map
+
+### choropleth map
+
+## analytics
+
+### split data
+
+### regression
+
+### knn
+
+#### cross validation
+
+## prediction
+
+
 
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
