@@ -24,11 +24,187 @@ This is a master project
 ## Load data
 
 ```{r}
-bike <- readRDS("Data/Bike_Data.rds")
 weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
 ```
 
+
+Lade einzelne Datensätze aus csv DAtei
+
+```{r}
+
+'januar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201601-citibike-tripdata.csv")
+
+februar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201602-citibike-tripdata.csv")
+
+maerz <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201603-citibike-tripdata.csv")
+
+april <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201604-citibike-tripdata.csv")
+
+mai <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201605-citibike-tripdata.csv")
+
+juni <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201606-citibike-tripdata.csv")
+
+juli <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201607-citibike-tripdata.csv")
+
+august <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201608-citibike-tripdata.csv")
+
+september <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201609-citibike-tripdata.csv")
+
+oktober <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201610-citibike-tripdata.csv")
+
+november <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201611-citibike-tripdata.csv")
+
+dezember <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201612-citibike-tripdata.csv")'
+```
+
+
 ## preprocessing
+
+Leerzeichen ersetzen durch Unterstriche
+
+```{r}
+'names(januar) <- str_replace_all(names(januar), c(" " = "_"))
+names(februar) <- str_replace_all(names(februar), c(" " = "_"))
+names(maerz) <- str_replace_all(names(maerz), c(" " = "_"))
+names(april) <- str_replace_all(names(april), c(" " = "_"))
+names(mai) <- str_replace_all(names(mai), c(" " = "_"))
+names(juni) <- str_replace_all(names(juni), c(" " = "_"))
+names(juli) <- str_replace_all(names(juli), c(" " = "_"))
+names(august) <- str_replace_all(names(august), c(" " = "_"))
+names(september) <- str_replace_all(names(september), c(" " = "_"))
+names(oktober) <- str_replace_all(names(oktober), c(" " = "_"))
+names(november) <- str_replace_all(names(november), c(" " = "_"))
+names(dezember) <- str_replace_all(names(dezember), c(" " = "_"))'
+```
+
+Spaltennamen vereinheitlichen
+
+```{r}
+'dezember <- dezember %>%
+
+  rename(tripduration = Trip_Duration,
+
+         starttime = Start_Time,
+         stoptime = Stop_Time,
+         start_station_id = Start_Station_ID,
+         start_station_name = Start_Station_Name,
+
+         start_station_latitude = Start_Station_Latitude,
+
+         start_station_longitude = Start_Station_Longitude,
+
+         end_station_id = End_Station_ID,
+
+         end_station_name = End_Station_Name,
+
+         end_station_latitude = End_Station_Latitude,
+
+         end_station_longitude = End_Station_Longitude,
+
+         bikeid = Bike_ID,
+
+         usertype = User_Type,
+
+         birth_year = Birth_Year,
+
+         gender = Gender)
+
+ 
+
+november <- november %>%
+
+  rename(tripduration = Trip_Duration,
+
+         starttime = Start_Time,
+
+         stoptime = Stop_Time,
+
+         start_station_id = Start_Station_ID,
+
+         start_station_name = Start_Station_Name,
+
+         start_station_latitude = Start_Station_Latitude,
+
+         start_station_longitude = Start_Station_Longitude,
+
+         end_station_id = End_Station_ID,
+
+         end_station_name = End_Station_Name,
+
+         end_station_latitude = End_Station_Latitude,
+
+         end_station_longitude = End_Station_Longitude,
+
+         bikeid = Bike_ID,
+
+         usertype = User_Type,
+
+         birth_year = Birth_Year,
+
+         gender = Gender)
+
+ 
+
+oktober <- oktober %>%
+
+  rename(tripduration = Trip_Duration,
+
+         starttime = Start_Time,
+
+         stoptime = Stop_Time,
+
+         start_station_id = Start_Station_ID,
+
+         start_station_name = Start_Station_Name,
+
+         start_station_latitude = Start_Station_Latitude,
+
+         start_station_longitude = Start_Station_Longitude,
+
+         end_station_id = End_Station_ID,
+
+         end_station_name = End_Station_Name,
+
+         end_station_latitude = End_Station_Latitude,
+
+         end_station_longitude = End_Station_Longitude,
+
+         bikeid = Bike_ID,
+
+         usertype = User_Type,
+
+         birth_year = Birth_Year,
+
+         gender = Gender)'
+```
+
+Monatsweise speichern
+
+```{r}
+'saveRDS(januar, "Bike_Data_Jan.RDS")
+
+saveRDS(februar, "Bike_Data_Feb.RDS")
+
+saveRDS(maerz, "Bike_Data_Mrz.Rds")
+
+saveRDS(april, "Bike_Data_Apr.RDS")
+
+saveRDS(mai, "Bike_Data_Mai.RDS")
+
+saveRDS(juni, "Bike_Data_Jun.RDS")
+
+saveRDS(juli, "Bike_Data_Jul.RDS")
+
+saveRDS(august, "Bike_Data_Aug.RDS")
+
+saveRDS(september, "Bike_Data_Sep.RDS")
+
+saveRDS(oktober, "Bike_Data_Okt.RDS")
+
+saveRDS(november, "Bike_Data_Nov.RDS")
+
+saveRDS(dezember, "Bike_Data_Dez.RDS")'
+```
 
 
 ### missing values
