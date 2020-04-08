@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+source("Routinen/ANNUtils.r")
 ```
 
 
@@ -23,13 +24,20 @@ This is a master project
 ## Load data
 
 ```{r}
-
-
+bike <- readRDS("Data/Bike_Data.rds")
+weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
 ```
 
 ## preprocessing
 
+
 ### missing values
+
+```{r}
+apply(bike, 2, function(x) sum(is.na(x)))
+```
+
+Wir werden zwei DAtensätze erstellen. Bike 1 enthält keine Daten ohne Geburtsjahr und Bike 2 enthält interpolierte Geburtsjahre. So können wir später vergleichen ob die interpolation einen Einfluss auf die statistik hat.
 
 ### tidy data
 
