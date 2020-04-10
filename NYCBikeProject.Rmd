@@ -13,54 +13,62 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(lubridate)
 source("Routinen/ANNUtils.r")
 ```
 
 
 # NYC bike project
 
-This is a master project
+## Überblick
+
+In diesem Anwendungsprojekt werden Daten der City of New York bearbeitet, visualisiert und analysiert, die Informationen zum städtischen Bikesharing aus dem Jahr 2016 enthalten. Das Hauptaugenmerk in diesem Projekt liegt darauf, möglichst sinnvoll und genau die Anzahl der Nutzer an den verschiedenen Stationen vorherzusagen. Zu diesem Zweck werden zusätzlich Wetterdaten der Stadt New York hinzugezogen.
+
+## Daten
+
+Die Daten zum Bikesharing sind folgendermaßen strukturiert. Jede Zeile des ursprünglichen Datensatzes repräsentiert eine Fahrt mit einem Fahrrad der Bikesharing Flotte. Zu jeder Fahrt ist die Dauer der Leihe, der Start- und Endzeitpunkt, sowie die Start- und Endstation festgehalten. Außerdem ist die Indentifikationsnummer des jeweiligen Fahrrades vorhanden. Des Weiteren sind Kundeninformationen festgehalten. Das Geschlecht und Geburtsjahr, sowie der Nutzertyp. Hier wird zwischen Customer und Subscriber unterschieden. Subscriber haben ein jährliches Abonnement abgeschlossen, wohingegen Customer einen Ein- oder Drei-Tages-Pass erworben haben.
+
+Die Wetterdaten halten die täglichen Maximal- und Minimaltemperaturen fest, sowie die Tagesdurchschnittstemperatur. Des Weiteren geben Sie Auskunft über den gefallenen Regen, sowie den neuen Schneefall und die Tiefe der aktuellen Schneedecke.
+
+## Forschungsfragen
+
+Nach einigen Diskussionen und Analysen der Daten haben sich zwei interessante Forschungsfragen ergeben.
+
+1. Können die Nutzerzahlen pro Station und Stunde zuverlässig vorrausgesagt werden?   und
+
+2. Können die Nutzerzahlen pro Tag in Abhängigkeit zum Wetter vorrausgesagt werden?
 
 ## Load data
+
+Zunächst wird der Datensatz geladen, der die Wetterdaten enthält.
 
 ```{r}
 weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
 ```
 
 
-Lade einzelne Datensätze aus csv DAtei
+Da die Bikesharingdaten von der Stadt New York monatlich gespeichert werden, werden sie zunächst je Monat in einen Data Frame geladen.
 
 ```{r}
 
 'januar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201601-citibike-tripdata.csv")
-
 februar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201602-citibike-tripdata.csv")
-
 maerz <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201603-citibike-tripdata.csv")
-
 april <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201604-citibike-tripdata.csv")
-
 mai <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201605-citibike-tripdata.csv")
-
 juni <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201606-citibike-tripdata.csv")
-
 juli <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201607-citibike-tripdata.csv")
-
 august <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201608-citibike-tripdata.csv")
-
 september <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201609-citibike-tripdata.csv")
-
 oktober <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201610-citibike-tripdata.csv")
-
 november <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201611-citibike-tripdata.csv")
-
 dezember <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201612-citibike-tripdata.csv")'
 ```
 
 
-## preprocessing
+## Preprocessing
 
-Leerzeichen ersetzen durch Unterstriche
+Da es in R schwierig sein kann mit Spaltennamen zu arbeiten, die Leerzeichen enthalten, werden diese zunächst durch Unterstriche ersetzt.
 
 ```{r}
 'names(januar) <- str_replace_all(names(januar), c(" " = "_"))
@@ -77,151 +85,121 @@ names(november) <- str_replace_all(names(november), c(" " = "_"))
 names(dezember) <- str_replace_all(names(dezember), c(" " = "_"))'
 ```
 
-Spaltennamen vereinheitlichen
+In einem nächsten Schritt werden die Spaltennamen der Monate Oktober bis Dezember an die Namen der anderen Monate angepasst, damit ein Datensatz entstehen kann, der alle Monate umfasst.
 
 ```{r}
 'dezember <- dezember %>%
-
   rename(tripduration = Trip_Duration,
-
          starttime = Start_Time,
          stoptime = Stop_Time,
          start_station_id = Start_Station_ID,
          start_station_name = Start_Station_Name,
-
          start_station_latitude = Start_Station_Latitude,
-
          start_station_longitude = Start_Station_Longitude,
-
          end_station_id = End_Station_ID,
-
          end_station_name = End_Station_Name,
-
          end_station_latitude = End_Station_Latitude,
-
          end_station_longitude = End_Station_Longitude,
-
          bikeid = Bike_ID,
-
          usertype = User_Type,
-
          birth_year = Birth_Year,
-
          gender = Gender)
-
- 
 
 november <- november %>%
-
   rename(tripduration = Trip_Duration,
-
          starttime = Start_Time,
-
          stoptime = Stop_Time,
-
          start_station_id = Start_Station_ID,
-
          start_station_name = Start_Station_Name,
-
          start_station_latitude = Start_Station_Latitude,
-
          start_station_longitude = Start_Station_Longitude,
-
          end_station_id = End_Station_ID,
-
          end_station_name = End_Station_Name,
-
          end_station_latitude = End_Station_Latitude,
-
          end_station_longitude = End_Station_Longitude,
-
          bikeid = Bike_ID,
-
          usertype = User_Type,
-
          birth_year = Birth_Year,
-
          gender = Gender)
 
- 
-
 oktober <- oktober %>%
-
   rename(tripduration = Trip_Duration,
-
          starttime = Start_Time,
-
          stoptime = Stop_Time,
-
          start_station_id = Start_Station_ID,
-
          start_station_name = Start_Station_Name,
-
          start_station_latitude = Start_Station_Latitude,
-
          start_station_longitude = Start_Station_Longitude,
-
          end_station_id = End_Station_ID,
-
          end_station_name = End_Station_Name,
-
          end_station_latitude = End_Station_Latitude,
-
          end_station_longitude = End_Station_Longitude,
-
          bikeid = Bike_ID,
-
          usertype = User_Type,
-
          birth_year = Birth_Year,
-
          gender = Gender)'
 ```
 
-Monatsweise speichern
+Aufgrund der Datenmenge werden die Monate einzeln abgespeichert und nach dem Laden zu einem Data Frame zusammengefasst. So ist während der Projektarbeit sichergestellt, dass alle Teammitglieder zu jeder Zeit über GitHub die jeweils aktuellen Daten nutzen können und keine Diskrepanzen entstehen.
 
 ```{r}
 'saveRDS(januar, "Bike_Data_Jan.RDS")
-
 saveRDS(februar, "Bike_Data_Feb.RDS")
-
-saveRDS(maerz, "Bike_Data_Mrz.Rds")
-
+saveRDS(maerz, "Bike_Data_Mrz.RDS")
 saveRDS(april, "Bike_Data_Apr.RDS")
-
 saveRDS(mai, "Bike_Data_Mai.RDS")
-
 saveRDS(juni, "Bike_Data_Jun.RDS")
-
 saveRDS(juli, "Bike_Data_Jul.RDS")
-
 saveRDS(august, "Bike_Data_Aug.RDS")
-
 saveRDS(september, "Bike_Data_Sep.RDS")
-
 saveRDS(oktober, "Bike_Data_Okt.RDS")
-
 saveRDS(november, "Bike_Data_Nov.RDS")
-
 saveRDS(dezember, "Bike_Data_Dez.RDS")'
 ```
 
-
-Daten in ein dataframe laden
+Die einzelnen Datensätze für jeden Monat werden geladen und in einem Datensatz mit dem Namen "bike" zusammengefasst. Da in den Datensätzen Januar bis September die Start- und Stopzeiten als <character> formatiert sind, in den Monaten Oktober bis Dezember aber als Unixtime bzw. bereits richtig umgewandelt als <datetime>, muss vor der Zusammenführung das Format vereinheitlicht werden. Hierfür wird in den Monaten Januar bis September der Datentyp von <character> zu <datetime> umgewandelt.. So ist weiteres Arbeiten mit den Datumsangaben problemlos möglich.
 
 ```{r}
 df1 <- read_rds("Data/Bike_Data_Jan.RDS")
+df1$starttime <- mdy_hms(df1$starttime)
+df1$stoptime <- mdy_hms(df1$stoptime)
+
 df2 <- read_rds("Data/Bike_Data_Feb.RDS")
+df2$starttime <- mdy_hms(df2$starttime)
+df2$stoptime <- mdy_hms(df2$stoptime)
+
 df3 <- read_rds("Data/Bike_Data_Mrz.RDS")
+df3$starttime <- mdy_hms(df3$starttime)
+df3$stoptime <- mdy_hms(df3$stoptime)
+
 df4 <- read_rds("Data/Bike_Data_Apr.RDS")
+df4$starttime <- mdy_hms(df4$starttime)
+df4$stoptime <- mdy_hms(df4$stoptime)
+
 df5 <- read_rds("Data/Bike_Data_Mai.RDS")
+df5$starttime <- mdy_hms(df5$starttime)
+df5$stoptime <- mdy_hms(df5$stoptime)
+
 df6 <- read_rds("Data/Bike_Data_Jun.RDS")
+df6$starttime <- mdy_hms(df6$starttime)
+df6$stoptime <- mdy_hms(df6$stoptime)
+
 df7 <- read_rds("Data/Bike_Data_Jul.RDS")
+df7$starttime <- mdy_hms(df7$starttime)
+df7$stoptime <- mdy_hms(df7$stoptime)
+
 df8 <- read_rds("Data/Bike_Data_Aug.RDS")
+df8$starttime <- mdy_hms(df8$starttime)
+df8$stoptime <- mdy_hms(df8$stoptime)
+
 df9 <- read_rds("Data/Bike_Data_Sep.RDS")
+df9$starttime <- mdy_hms(df9$starttime)
+df9$stoptime <- mdy_hms(df9$stoptime)
+
 df10 <- read_rds("Data/Bike_Data_Okt.RDS")
 df11 <- read_rds("Data/Bike_Data_Nov.RDS")
 df12 <- read_rds("Data/Bike_Data_Dez.RDS")
+
 
 bike <- rbind(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
 rm(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
@@ -230,27 +208,34 @@ rm(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
 
 ### missing values
 
+Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden Werten gesucht und diese entfernt oder ersetzt. Dies ist notwendig, da die späteren Analyseergebnisse durch fehlende Werte beeinträchtigt werden können.
+
 ```{r}
 apply(bike, 2, function(x) sum(is.na(x)))
 ```
 
-Wir werden zwei DAtensätze erstellen. Bike 1 enthält keine Daten ohne Geburtsjahr und Bike 2 enthält interpolierte Geburtsjahre. So können wir später vergleichen ob die interpolation einen Einfluss auf die statistik hat.
+Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
 
 
 ```{r}
 bike <- na.omit(bike)
 apply(bike, 2, function(x) sum(is.na(x)))
-test <- read_rds("Data/Bike_Data_Mrz.RDS")
+'test <- read_rds("Data/Bike_Data_Mrz.RDS") #Erstellen Testdatensatz, da Abfragen sonst zu lang dauern
 apply(test, 2, function(x) sum(is.na(x)))
 test <- na.omit(test)
 apply(test, 2, function(x) sum(is.na(x)))
-sum(bike$usertype == "Customer")
+sum(bike$usertype == "Customer")'
 ```
 
 
 ### tidy data
 
-### agregate data
+```{r}
+
+```
+
+
+### aggregate data
 
  Nach einer Diskussion haben wir festgestellt das sich zwei interessante Fragen auftun.
  
