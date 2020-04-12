@@ -241,6 +241,21 @@ sum(bike$usertype == "Customer")'
  
  1. Können wir die Nutzerzahlen pro STation pro Stunde vorraussagen ?   und
  2. Können wir die Nutzerzahlen pro Tag in abhängigkeit zum Wetter vorraussagen?
+ 
+ Um die DAten für die zweite Frage zu aggregieren müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
+ 
+```{r}
+bike_q2 <- bike
+bike_q2 <- bike_q2 %>%
+  mutate(date=date(bike_q2$starttime))
+bike_q2 %>%
+  group_by(date, start_station_name, start_station_latitude, start_station_longitude, gender) %>%
+  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
+
+
+  
+```
+ 
 
 ## visualization
 
