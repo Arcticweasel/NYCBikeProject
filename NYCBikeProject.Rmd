@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(imputeTS)
 source("Routinen/ANNUtils.r")
 ```
 
@@ -212,6 +213,13 @@ Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden
 
 ```{r}
 apply(bike, 2, function(x) sum(is.na(x)))
+apply(weather, 2, function(x) sum(is.na(x)))
+
+is.na(weather$precipitation) <- which(weather$precipitation == 'T')
+is.na(weather$snow.fall) <- which(weather$snow.fall == 'T')
+is.na(weather$snow.depth) <- which(weather$snow.depth == 'T')
+
+weather <- na_interpolation(weather, option = "spline")
 ```
 
 Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
@@ -276,13 +284,20 @@ hourly_stops <- bike_q1 %>%
 ```{r}
 bike_q2 <- bike
 bike_q2 <- bike_q2 %>%
-  mutate(date=date(bike_q2$starttime))
-bike_q2 %>%
-  group_by(date, start_station_name, start_station_latitude, start_station_longitude, gender) %>%
+  mutate(date_start=date(bike_q2$starttime),
+         date_stop=date(bike_q2$stoptime))
+bike_q2_starts <- bike_q2 %>%
+  group_by(date_start, start_station_name, start_station_latitude, start_station_longitude, gender) %>%
+  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
+bike_q2_stops <- bike_q2 %>%
+  group_by(date_stop, end_station_name, end_station_latitude, end_station_longitude, gender) %>%
   summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
 
+```
 
-  
+Beim WEtter fehlen ein paar WErte
+```{r}
+
 ```
  
 
