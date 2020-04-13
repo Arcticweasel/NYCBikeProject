@@ -230,6 +230,7 @@ sum(bike$usertype == "Customer")'
 
 ### tidy data
 
+
 ```{r}
 
 ```
@@ -242,7 +243,35 @@ sum(bike$usertype == "Customer")'
  1. Können wir die Nutzerzahlen pro STation pro Stunde vorraussagen ?   und
  2. Können wir die Nutzerzahlen pro Tag in abhängigkeit zum Wetter vorraussagen?
  
- Um die DAten für die zweite Frage zu aggregieren müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
+ Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter, sowie die durchschnittliche Fahrtdauer. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein).
+ 
+```{r}
+bike_q1 <- bike
+bike_q1 <- bike_q1 %>%
+  mutate(start_date = as_date(starttime),
+         start_hour = hour(starttime),
+         stop_date = as_date(stoptime),
+         stop_hour = hour(stoptime))
+
+hourly_starts <- bike_q1 %>%
+  group_by(start_date, start_hour, start_station_id, start_station_name, start_station_latitude,
+           start_station_longitude) %>%
+  summarise(user_count = n(),
+            avg_age = round(2016 - mean(birth_year)),
+            avg_tripduration = mean(tripduration)) %>%
+  mutate(weekend = ifelse(wday(start_date) == 6 | wday(start_date) == 7, 1,0))
+
+hourly_stops <- bike_q1 %>%
+  group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
+           end_station_longitude) %>%
+  summarise(user_count = n(),
+            avg_age = round(2016 - mean(birth_year)),
+            avg_tripduration = mean(tripduration)) %>%
+  mutate(weekend = ifelse(wday(stop_date) == 6 | wday(stop_date) == 7, 1,0))
+```
+
+ 
+ Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
  
 ```{r}
 bike_q2 <- bike
