@@ -207,7 +207,7 @@ rm(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
 ```
 
 
-### missing values
+### Missing Values
 
 Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden Werten gesucht und diese entfernt oder ersetzt. Dies ist notwendig, da die späteren Analyseergebnisse durch fehlende Werte beeinträchtigt werden können.
 
@@ -236,22 +236,65 @@ sum(bike$usertype == "Customer")'
 ```
 
 
-### tidy data
+### Tidy Data
 
+Um mit den Wetterdaten arbeiten zu können, muss zunächst die Spalte date in das richtige Datumsformat 
+überführt werden. Die Temperaturangaben in Fahrenheit werden in Celsius, die Menge des Regens und des 
+Schnees in Inches in Millimeter umgerechnet. Kann die Menge des gefallenen Regens oder Schnees nicht 
+gemessen werden, wird dies durch ein T gekennzeichnet. Um mit den Daten problemlos arbeiten zu können, 
+wird das T durch den Wert 0.01 ersetzt. So ist ein numerischer Wert vorhanden, der kennzeichnet, dass 
+Regen oder Schnee gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen unverhältnismäßigen 
+Einfluss auf etwaige Analyseergebnisse hat.
 
 ```{r}
+weather$date <- dmy(weather$date)
+
+weather <- weather %>%
+  mutate(maximum.temperature = (maximum.temperature-32)*5/9,
+         minimum.temperature = (minimum.temperature-32)*5/9,
+         average.temperature = (average.temperature-32)*5/9)
+
+levels(weather$precipitation)
+levels(weather$snow.fall)
+levels(weather$snow.depth)
+
+weather$precipitation <- as.character(weather$precipitation)
+weather$precipitation[weather$precipitation == "T"] <- 100
+weather$precipitation <- as.double(weather$precipitation)
+
+weather$snow.fall <- as.character(weather$snow.fall)
+weather$snow.fall[weather$snow.fall == "T"] <- 100
+weather$snow.fall <- as.double(weather$snow.fall)
+
+weather$snow.depth <- as.character(weather$snow.depth)
+weather$snow.depth[weather$snow.depth == "T"] <- 100
+weather$snow.depth <- as.double(weather$snow.depth)
+
+weather <- weather %>%
+  mutate(precipitation = precipitation*25.4,
+         snow.fall = snow.fall*25.4,
+         snow.depth = snow.depth*25.4)
+
+max(weather$precipitation)
+weather$precipitation[weather$precipitation == 2540] <- 0.01
+
+max(weather$snow.fall)
+weather$snow.fall[weather$snow.fall == 2540] <- 0.01
+
+max(weather$snow.depth)
+weather$snow.depth[weather$snow.depth == 2540] <- 0.01
 
 ```
 
 
-### aggregate data
+### Aggregate Data
 
  Nach einer Diskussion haben wir festgestellt das sich zwei interessante Fragen auftun.
  
  1. Können wir die Nutzerzahlen pro STation pro Stunde vorraussagen ?   und
  2. Können wir die Nutzerzahlen pro Tag in abhängigkeit zum Wetter vorraussagen?
  
- Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter, sowie die durchschnittliche Fahrtdauer. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein).
+ Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
 ```{r}
 bike_q1 <- bike
@@ -269,6 +312,42 @@ hourly_starts <- bike_q1 %>%
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(start_date) == 6 | wday(start_date) == 7, 1,0))
 
+gender <- df %>%
+  group_by(start_date, start_hour, start_station_id, gender) %>%
+  summarise(user = n())
+gender <- pivot_wider(gender, names_from = gender, values_from = user)
+
+hourly_starts <- cbind(hourly_starts, gender)
+hourly_starts$start_date1 <- NULL
+hourly_starts$start_hour1 <- NULL
+hourly_starts$start_station_id1 <- NULL
+
+usertype <- df %>%
+  group_by(start_date, start_hour, start_station_id, usertype) %>%
+  summarise(user = n())
+usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
+
+hourly_starts <- cbind(hourly_starts, usertype)
+hourly_starts$start_date1 <- NULL
+hourly_starts$start_hour1 <- NULL
+hourly_starts$start_station_id1 <- NULL
+
+hourly_starts <- hourly_starts %>%
+  rename(male_user_count = "1",
+         female_user_count = "2",
+         undefined_user_count = "0",
+         subscriber_count = Subscriber,
+         customer_count = Customer)
+
+hourly_starts$male_user_count[is.na(hourly_starts$male_user_count)] <- 0
+hourly_starts$female_user_count[is.na(hourly_starts$female_user_count)] <- 0
+hourly_starts$undefined_user_count[is.na(hourly_starts$undefined_user_count)] <- 0
+hourly_starts$subscriber_count[is.na(hourly_starts$subscriber_count)] <- 0
+hourly_starts$customer_count[is.na(hourly_starts$customer_count)] <- 0
+
+rm(gender)
+rm(usertype)
+
 hourly_stops <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
            end_station_longitude) %>%
@@ -276,6 +355,43 @@ hourly_stops <- bike_q1 %>%
             avg_age = round(2016 - mean(birth_year)),
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(stop_date) == 6 | wday(stop_date) == 7, 1,0))
+
+gender <- df %>%
+  group_by(stop_date, stop_hour, end_station_id, gender) %>%
+  summarise(user = n())
+gender <- pivot_wider(gender, names_from = gender, values_from = user)
+
+hourly_stops <- cbind(hourly_stops, gender)
+hourly_stops$start_date1 <- NULL
+hourly_stops$start_hour1 <- NULL
+hourly_stops$start_station_id1 <- NULL
+
+usertype <- df %>%
+  group_by(stop_date, stop_hour, end_station_id, usertype) %>%
+  summarise(user = n())
+usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
+
+hourly_stops <- cbind(hourly_stops, usertype)
+hourly_stops$start_date1 <- NULL
+hourly_stops$start_hour1 <- NULL
+hourly_stops$start_station_id1 <- NULL
+
+hourly_stops <- hourly_stops %>%
+  rename(male_user_count = "1",
+         female_user_count = "2",
+         undefined_user_count = "0",
+         subscriber_count = Subscriber,
+         customer_count = Customer)
+
+hourly_stops$male_user_count[is.na(hourly_stops$male_user_count)] <- 0
+hourly_stops$female_user_count[is.na(hourly_stops$female_user_count)] <- 0
+hourly_stops$undefined_user_count[is.na(hourly_stops$undefined_user_count)] <- 0
+hourly_stops$subscriber_count[is.na(hourly_stops$subscriber_count)] <- 0
+hourly_stops$customer_count[is.na(hourly_stops$customer_count)] <- 0
+
+rm(gender)
+rm(usertype)
+
 ```
 
  
