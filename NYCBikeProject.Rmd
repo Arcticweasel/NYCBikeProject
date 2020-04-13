@@ -213,13 +213,19 @@ Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden
 
 ```{r}
 apply(bike, 2, function(x) sum(is.na(x)))
+
 apply(weather, 2, function(x) sum(is.na(x)))
 
-is.na(weather$precipitation) <- which(weather$precipitation == 'T')
-is.na(weather$snow.fall) <- which(weather$snow.fall == 'T')
-is.na(weather$snow.depth) <- which(weather$snow.depth == 'T')
+weather_test <- weather
+is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
+is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
+is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')
 
-weather <- na_interpolation(weather, option = "spline")
+weather_test$precipitation <- as.numeric(weather_test$precipitation)
+
+weather_test[is.na(weather_test$precipitation),"precipitation"] <- 0.01
+
+weather_test_interpolated <- na_interpolation(weather_test$precipitation, option = "spline")
 ```
 
 Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
@@ -411,11 +417,7 @@ bike_q2_stops <- bike_q2 %>%
 
 ```
 
-Beim WEtter fehlen ein paar WErte
-```{r}
 
-```
- 
 
 ## visualization
 
