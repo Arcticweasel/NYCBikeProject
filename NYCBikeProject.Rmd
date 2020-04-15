@@ -44,7 +44,7 @@ Nach einigen Diskussionen und Analysen der Daten haben sich zwei interessante Fo
 Zunächst wird der Datensatz geladen, der die Wetterdaten enthält.
 
 ```{r}
-weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
+#weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
 ```
 
 
@@ -212,11 +212,17 @@ rm(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
 Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden Werten gesucht und diese entfernt oder ersetzt. Dies ist notwendig, da die späteren Analyseergebnisse durch fehlende Werte beeinträchtigt werden können.
 
 ```{r}
+
+# Überprüfe auf Missing values
+'
 apply(bike, 2, function(x) sum(is.na(x)))
 
 apply(weather, 2, function(x) sum(is.na(x)))
+'
 
-weather_test <- weather
+# Mögliche Variante für missing Values beim Wetter
+
+'weather_test <- weather
 is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
 is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
 is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')
@@ -225,7 +231,7 @@ weather_test$precipitation <- as.numeric(weather_test$precipitation)
 
 weather_test[is.na(weather_test$precipitation),"precipitation"] <- 0.01
 
-weather_test_interpolated <- na_interpolation(weather_test$precipitation, option = "spline")
+weather_test_interpolated <- na_interpolation(weather_test$precipitation, option = "spline")'
 ```
 
 Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
@@ -234,6 +240,9 @@ Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um ein
 ```{r}
 bike <- na.omit(bike)
 apply(bike, 2, function(x) sum(is.na(x)))
+
+
+
 'test <- read_rds("Data/Bike_Data_Mrz.RDS") #Erstellen Testdatensatz, da Abfragen sonst zu lang dauern
 apply(test, 2, function(x) sum(is.na(x)))
 test <- na.omit(test)
@@ -253,7 +262,7 @@ Regen oder Schnee gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen 
 Einfluss auf etwaige Analyseergebnisse hat. Die T-Werte werden zunächst durch den Wert 100 ersetzt, da so Probleme beim Umrechnen umgangen werden, die durch z.B. NAs entstehen. In keiner der Spalten kommt vorher der Wert 100 vor, sodass nach dem Umrechnen weiterhin klar ist, welche Werte vorher ein T waren. Nach dem Umrechnen haben diese den Wert 2540 und können problemlos mit 0.01 ersetzt werden.
 
 ```{r}
-weather$date <- dmy(weather$date)
+'weather$date <- dmy(weather$date)
 
 weather <- weather %>%
   mutate(maximum.temperature = round((maximum.temperature-32)*5/9, 2),
@@ -288,8 +297,13 @@ max(weather$snow.fall)
 weather$snow.fall[weather$snow.fall == 2540] <- 0.01
 
 max(weather$snow.depth)
-weather$snow.depth[weather$snow.depth == 2540] <- 0.01
+weather$snow.depth[weather$snow.depth == 2540] <- 0.01'
 
+# Wetter gespeichert
+
+#saveRDS(weather, "weather_rdy.rds")
+
+readRDS("weather_rdy.rds")
 ```
 
 
@@ -406,22 +420,87 @@ hourly_stops$customer_count[is.na(hourly_stops$customer_count)] <- 0
 rm(gender)
 rm(usertype)
 
+
+
 ```
 
  
  Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
  
 ```{r}
+'
+# Kopiere Datensatz in Question2 Datensatz und wandel Date/time Spalte in Date spalte um und füge Sie hinzu
 bike_q2 <- bike
 bike_q2 <- bike_q2 %>%
   mutate(date_start=date(bike_q2$starttime),
          date_stop=date(bike_q2$stoptime))
-bike_q2_starts <- bike_q2 %>%
+
+
+# Extrahiere das Gender aus dem Datensatz für die Starts
+bike_q2_starts_gender <- bike_q2 %>%
   group_by(date_start, start_station_name, start_station_latitude, start_station_longitude, gender) %>%
-  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
-bike_q2_stops <- bike_q2 %>%
+  summarise( anzahl = n() )
+
+# Extrahiere das Gender aus dem Datensatz für die Stops
+bike_q2_stops_gender <- bike_q2 %>%
   group_by(date_stop, end_station_name, end_station_latitude, end_station_longitude, gender) %>%
-  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
+  summarise( anzahl = n() )
+
+# Tidy Gender Tabelle für starts und stops
+gender_q2_starts <- pivot_wider(bike_q2_starts_gender, names_from = gender, values_from = anzahl)
+
+gender_q2_stops <- pivot_wider(bike_q2_stops_gender, names_from = gender, values_from = anzahl)
+
+
+# Aggregiere Starts und Stops nach Datum und Station
+
+bike_q2_starts <- bike_q2 %>%
+  group_by(date_start, start_station_name, start_station_latitude, start_station_longitude) %>%
+  summarise(avr_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration), anzahl = n() )
+bike_q2_stops <- bike_q2 %>%
+  group_by(date_stop, end_station_name, end_station_latitude, end_station_longitude) %>%
+  summarise(avr_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration), anzahl = n() )
+
+
+# Füge den agregierten Tabellen das Gender hinzu
+
+bike_q2_starts_rdy <- left_join(bike_q2_starts, gender_q2_starts, by = c("date_start", "start_station_name" ))
+bike_q2_stops_rdy <- left_join(bike_q2_stops, gender_q2_stops, by = c("date_stop", "end_station_name" ))
+
+# Nicht benötigte Spalten gelöscht und NAs in 0 umgewandelt weil wir wissen das diese 0 sind
+
+bike_q2_starts_rdy$start_station_latitude.y <- NULL
+bike_q2_starts_rdy$start_station_longitude.y <- NULL
+
+bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`1`),"1"] <- 0
+bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`2`),"2"] <- 0
+bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`0`),"0"] <- 0
+
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, male = '1')
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, woman = '2')
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, undefined = '0')
+
+
+bike_q2_stops_rdy$end_station_latitude.y <- NULL
+bike_q2_stops_rdy$end_station_longitude.y <- NULL
+
+bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`1`),"1"] <- 0
+bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`2`),"2"] <- 0
+bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`0`),"0"] <- 0
+
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, male = '1')
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, woman = '2')
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, undefined = '0')
+
+rm(bike_q2, bike_q2_starts, bike_q2_starts_gender, bike_q2_stops, bike_q2_stops_gender, gender_q2_starts, gender_q2_stops)
+
+
+saveRDS(bike_q2_starts_rdy, "Data/bike_q2_starts.rds")
+saveRDS(bike_q2_stops_rdy, "Data/bike_q2_stops.rds")
+'
+
+read_rds("Data/bike_q2_starts.rds")
+read_rds("Data/bike_q2_stops.rds")
 
 ```
 
