@@ -410,10 +410,13 @@ bike_q2 <- bike_q2 %>%
          date_stop=date(bike_q2$stoptime))
 bike_q2_starts <- bike_q2 %>%
   group_by(date_start, start_station_name, start_station_latitude, start_station_longitude, gender) %>%
-  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
+  summarise(avr_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration), anzahl = n() )
 bike_q2_stops <- bike_q2 %>%
   group_by(date_stop, end_station_name, end_station_latitude, end_station_longitude, gender) %>%
-  summarise(avr_age = 2016-mean(birth_year), avg_tripduration = mean(tripduration), anzahl = n() )
+  summarise(avr_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration), anzahl = n() )
+
+
+
 
 ```
 
