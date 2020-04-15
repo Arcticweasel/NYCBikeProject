@@ -519,6 +519,41 @@ q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 ### heat map
 
+```{r}
+library(geojsonio)
+library(broom)
+library(cartography)
+
+# load geojson
+
+spdf <- geojson_read("Data/new-york-city-boroughs.geojson",  what = "sp")
+ 
+ 
+# Now I can plot this shape easily as described before:
+
+ggplot() +
+  geom_polygon(data = spdf, aes( x = long, y = lat, group = group), fill="white", color="grey") +
+  theme_void() +
+  coord_map()
+
+
+q2_starts_test <- rename(q2_starts, long = start_station_longitude.x)
+q2_starts_test <- rename(q2_starts, lat = start_station_latitude.x)
+
+
+
+ggplot() +
+  geom_polygon(data = spdf, aes( x = long, y = lat, group = group)) +
+  theme_void() +
+  coord_map()
+
+
+# Build a choropleth
+choroLayer(spdf = spdf, df = , var = "pop2008" , legend.pos = "right")
+title("Population in 2008")
+```
+
+
 ### choropleth map
 
 ## analytics
