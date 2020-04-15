@@ -256,9 +256,9 @@ Einfluss auf etwaige Analyseergebnisse hat.
 weather$date <- dmy(weather$date)
 
 weather <- weather %>%
-  mutate(maximum.temperature = (maximum.temperature-32)*5/9,
-         minimum.temperature = (minimum.temperature-32)*5/9,
-         average.temperature = (average.temperature-32)*5/9)
+  mutate(maximum.temperature = round((maximum.temperature-32)*5/9, 2),
+         minimum.temperature = round((minimum.temperature-32)*5/9, 2),
+         average.temperature = round((average.temperature-32)*5/9, 2))
 
 levels(weather$precipitation)
 levels(weather$snow.fall)
@@ -277,9 +277,9 @@ weather$snow.depth[weather$snow.depth == "T"] <- 100
 weather$snow.depth <- as.double(weather$snow.depth)
 
 weather <- weather %>%
-  mutate(precipitation = precipitation*25.4,
-         snow.fall = snow.fall*25.4,
-         snow.depth = snow.depth*25.4)
+  mutate(precipitation = round(precipitation*25.4, 2),
+         snow.fall = round(snow.fall*25.4, 2),
+         snow.depth = round(snow.depth*25.4, 2))
 
 max(weather$precipitation)
 weather$precipitation[weather$precipitation == 2540] <- 0.01
@@ -318,7 +318,7 @@ hourly_starts <- bike_q1 %>%
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(start_date) == 6 | wday(start_date) == 7, 1,0))
 
-gender <- df %>%
+gender <- bike_q1 %>%
   group_by(start_date, start_hour, start_station_id, gender) %>%
   summarise(user = n())
 gender <- pivot_wider(gender, names_from = gender, values_from = user)
@@ -328,7 +328,7 @@ hourly_starts$start_date1 <- NULL
 hourly_starts$start_hour1 <- NULL
 hourly_starts$start_station_id1 <- NULL
 
-usertype <- df %>%
+usertype <- bike_q1 %>%
   group_by(start_date, start_hour, start_station_id, usertype) %>%
   summarise(user = n())
 usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
@@ -362,7 +362,7 @@ hourly_stops <- bike_q1 %>%
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(stop_date) == 6 | wday(stop_date) == 7, 1,0))
 
-gender <- df %>%
+gender <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, gender) %>%
   summarise(user = n())
 gender <- pivot_wider(gender, names_from = gender, values_from = user)
@@ -372,7 +372,7 @@ hourly_stops$start_date1 <- NULL
 hourly_stops$start_hour1 <- NULL
 hourly_stops$start_station_id1 <- NULL
 
-usertype <- df %>%
+usertype <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, usertype) %>%
   summarise(user = n())
 usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
