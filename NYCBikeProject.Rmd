@@ -214,20 +214,20 @@ Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden
 ```{r}
 
 # Überprüfe auf Missing values
-'
-apply(bike, 2, function(x) sum(is.na(x)))
 
-apply(weather, 2, function(x) sum(is.na(x)))
-'
+'apply(bike, 2, function(x) sum(is.na(x)))
+
+apply(weather, 2, function(x) sum(is.na(x)))'
+
 
 # Mögliche Variante für missing Values beim Wetter
 
-'weather_test <- weather
-is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
-is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
-is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')
+#weather_test <- weather
+#is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
+#is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
+#is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')'
 
-weather_test$precipitation <- as.numeric(weather_test$precipitation)
+'weather_test$precipitation <- as.numeric(weather_test$precipitation)
 
 weather_test[is.na(weather_test$precipitation),"precipitation"] <- 0.01
 
@@ -239,7 +239,9 @@ Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um ein
 
 ```{r}
 bike <- na.omit(bike)
-apply(bike, 2, function(x) sum(is.na(x)))
+
+
+#apply(bike, 2, function(x) sum(is.na(x)))
 
 
 
@@ -303,7 +305,7 @@ weather$snow.depth[weather$snow.depth == 2540] <- 0.01'
 
 #saveRDS(weather, "weather_rdy.rds")
 
-readRDS("weather_rdy.rds")
+weather <- readRDS("weather_rdy.rds")
 ```
 
 
@@ -317,6 +319,8 @@ readRDS("weather_rdy.rds")
  Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
 ```{r}
+
+'
 bike_q1 <- bike
 bike_q1 <- bike_q1 %>%
   mutate(start_date = as_date(starttime),
@@ -420,7 +424,12 @@ hourly_stops$customer_count[is.na(hourly_stops$customer_count)] <- 0
 rm(gender)
 rm(usertype)
 
+saveRDS(hourly_starts, "Data/bike_q1_starts.rds")
+saveRDS(hourly_stops, "Data/bike_q1_stops.rds")
+'
 
+hourly_starts <- readRDS("Data/bike_q1_starts.rds")
+hourly_stops <- readRDS("Data/bike_q1_stops.rds")
 
 ```
 
@@ -476,9 +485,9 @@ bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`1`),"1"] <- 0
 bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`2`),"2"] <- 0
 bike_q2_starts_rdy[is.na(bike_q2_starts_rdy$`0`),"0"] <- 0
 
-bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, male = '1')
-bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, woman = '2')
-bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, undefined = '0')
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, male = "1")
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, woman = "2")
+bike_q2_starts_rdy <- rename(bike_q2_starts_rdy, undefined = "0")
 
 
 bike_q2_stops_rdy$end_station_latitude.y <- NULL
@@ -488,9 +497,9 @@ bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`1`),"1"] <- 0
 bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`2`),"2"] <- 0
 bike_q2_stops_rdy[is.na(bike_q2_stops_rdy$`0`),"0"] <- 0
 
-bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, male = '1')
-bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, woman = '2')
-bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, undefined = '0')
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, male = "1")
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, woman = "2")
+bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, undefined = "0")
 
 rm(bike_q2, bike_q2_starts, bike_q2_starts_gender, bike_q2_stops, bike_q2_stops_gender, gender_q2_starts, gender_q2_stops)
 
@@ -499,8 +508,8 @@ saveRDS(bike_q2_starts_rdy, "Data/bike_q2_starts.rds")
 saveRDS(bike_q2_stops_rdy, "Data/bike_q2_stops.rds")
 '
 
-read_rds("Data/bike_q2_starts.rds")
-read_rds("Data/bike_q2_stops.rds")
+q2_starts <- read_rds("Data/bike_q2_starts.rds")
+q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 ```
 
@@ -509,6 +518,41 @@ read_rds("Data/bike_q2_stops.rds")
 ## visualization
 
 ### heat map
+
+```{r}
+library(geojsonio)
+library(broom)
+library(cartography)
+
+# load geojson
+
+spdf <- geojson_read("Data/new-york-city-boroughs.geojson",  what = "sp")
+ 
+ 
+# Now I can plot this shape easily as described before:
+
+ggplot() +
+  geom_polygon(data = spdf, aes( x = long, y = lat, group = group), fill="white", color="grey") +
+  theme_void() +
+  coord_map()
+
+
+q2_starts_test <- rename(q2_starts, long = start_station_longitude.x)
+q2_starts_test <- rename(q2_starts, lat = start_station_latitude.x)
+
+
+
+ggplot() +
+  geom_polygon(data = spdf, aes( x = long, y = lat, group = group)) +
+  theme_void() +
+  coord_map()
+
+
+# Build a choropleth
+choroLayer(spdf = spdf, df = , var = "pop2008" , legend.pos = "right")
+title("Population in 2008")
+```
+
 
 ### choropleth map
 
