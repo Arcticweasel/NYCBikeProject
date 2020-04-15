@@ -158,7 +158,7 @@ saveRDS(november, "Bike_Data_Nov.RDS")
 saveRDS(dezember, "Bike_Data_Dez.RDS")'
 ```
 
-Die einzelnen Datensätze für jeden Monat werden geladen und in einem Datensatz mit dem Namen "bike" zusammengefasst. Da in den Datensätzen Januar bis September die Start- und Stopzeiten als <character> formatiert sind, in den Monaten Oktober bis Dezember aber als Unixtime bzw. bereits richtig umgewandelt als <datetime>, muss vor der Zusammenführung das Format vereinheitlicht werden. Hierfür wird in den Monaten Januar bis September der Datentyp von <character> zu <datetime> umgewandelt.. So ist weiteres Arbeiten mit den Datumsangaben problemlos möglich.
+Die einzelnen Datensätze für jeden Monat werden geladen und in einem Datensatz mit dem Namen "bike" zusammengefasst. Da in den Datensätzen Januar bis September die Start- und Stopzeiten als <character> formatiert sind, in den Monaten Oktober bis Dezember aber als Unixtime bzw. bereits richtig umgewandelt als <datetime>, muss vor der Zusammenführung das Format vereinheitlicht werden. Hierfür wird in den Monaten Januar bis September der Datentyp von <character> zu <datetime> umgewandelt. So ist weiteres Arbeiten mit den Datumsangaben problemlos möglich.
 
 ```{r}
 df1 <- read_rds("Data/Bike_Data_Jan.RDS")
@@ -259,7 +259,7 @@ Schnees in Inches in Millimeter umgerechnet. Kann die Menge des gefallenen Regen
 gemessen werden, wird dies durch ein T gekennzeichnet. Um mit den Daten problemlos arbeiten zu können, 
 wird das T durch den Wert 0.01 ersetzt. So ist ein numerischer Wert vorhanden, der kennzeichnet, dass 
 Regen oder Schnee gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen unverhältnismäßigen 
-Einfluss auf etwaige Analyseergebnisse hat.
+Einfluss auf etwaige Analyseergebnisse hat. Die T-Werte werden zunächst durch den Wert 100 ersetzt, da so Probleme beim Umrechnen umgangen werden, die durch z.B. NAs entstehen. In keiner der Spalten kommt vorher der Wert 100 vor, sodass nach dem Umrechnen weiterhin klar ist, welche Werte vorher ein T waren. Nach dem Umrechnen haben diese den Wert 2540 und können problemlos mit 0.01 ersetzt werden.
 
 ```{r}
 'weather$date <- dmy(weather$date)
@@ -377,24 +377,32 @@ hourly_stops <- bike_q1 %>%
   mutate(weekend = ifelse(wday(stop_date) == 6 | wday(stop_date) == 7, 1,0))
 
 gender <- bike_q1 %>%
-  group_by(stop_date, stop_hour, end_station_id, gender) %>%
+  group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
+           end_station_longitude,gender) %>%
   summarise(user = n())
 gender <- pivot_wider(gender, names_from = gender, values_from = user)
 
 hourly_stops <- cbind(hourly_stops, gender)
-hourly_stops$start_date1 <- NULL
-hourly_stops$start_hour1 <- NULL
-hourly_stops$start_station_id1 <- NULL
+hourly_stops$stop_date1 <- NULL
+hourly_stops$stop_hour1 <- NULL
+hourly_stops$end_station_id1 <- NULL
+hourly_stops$end_station_name1 <- NULL 
+hourly_stops$end_station_latitude1 <- NULL
+hourly_stops$end_station_longitude1 <- NULL
 
 usertype <- bike_q1 %>%
-  group_by(stop_date, stop_hour, end_station_id, usertype) %>%
+  group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
+           end_station_longitude, usertype) %>%
   summarise(user = n())
 usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
 
 hourly_stops <- cbind(hourly_stops, usertype)
-hourly_stops$start_date1 <- NULL
-hourly_stops$start_hour1 <- NULL
-hourly_stops$start_station_id1 <- NULL
+hourly_stops$stop_date1 <- NULL
+hourly_stops$stop_hour1 <- NULL
+hourly_stops$end_station_id1 <- NULL
+hourly_stops$end_station_name1 <- NULL 
+hourly_stops$end_station_latitude1 <- NULL
+hourly_stops$end_station_longitude1 <- NULL
 
 hourly_stops <- hourly_stops %>%
   rename(male_user_count = "1",
