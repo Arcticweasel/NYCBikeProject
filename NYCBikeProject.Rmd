@@ -515,8 +515,146 @@ q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 
 
-## visualization
+## Visualization
 
+### Basic Visualizations
+
+Um ein Gefühl für die Daten zu bekommen und erste Einblicke in deren Beschaffenheit zu erhalten, werden zunächst einfache Visualisierungen genutzt.
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+```
+Zunächst werden die monatlichen Nutzerzahlen betrachtet.
+
+```{r}
+q2_starts %>%
+  group_by(month = month(date_start, label = T)) %>%
+  summarise(user_sum = sum(anzahl)) %>%
+  ggplot(aes(month, user_sum)) +
+  geom_line(colour = "cadetblue", size = 0.75, group = 1) +
+  geom_point(colour = "cadetblue", size = 1.5) +
+  theme_light() +
+  labs(title = "Nutzeranzahl Pro Monat", y = "Nutzeranzahl",
+       x = "Monat")
+```
+
+Diese entsprechen weitestgehend den Erwartungen. In den Wintermonaten sind die Nutzerzahlen wesentlich geringer als in den Sommermonaten. Ab Februar steigen die Nutzerzahlen bis September stetig an, mit Ausnahme eines Einbruchs im Juli. Dieser kann verschiedene Gründe haben. Zum Einen könnten viele Menschen ihren Sommerurlaub nehmen und verreisen oder die Temperaturen könnten so hoch sein, dass Radfahren als unangenehm empfunden wird.
+
+Als nächstes sollen die monatlichen Nutzerzahlen von Männern und Frauen verglichen werden, um zu sehen, ob Unterschiede bestehen.
+
+```{r}
+q2_starts %>%
+  group_by(month = month(date_start, label = T)) %>%
+  summarise(male_sum = sum(male),
+            female_sum = sum(woman)) %>%
+  ggplot() +
+  geom_line(aes(month, male_sum, colour = "cadetblue"), size = 0.75, group = 1) +
+  geom_line(aes(month, female_sum, colour = "cadetblue4"), size = 0.75, group = 1) +
+  scale_colour_manual(name = "Gender", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
+                      labels = c("Male", "Female")) +
+  theme_light() +
+  labs(title = "Nutzeranzahl Pro Monat Nach Geschlecht",
+       y = "Nutzeranzahl", x = "Monat")
+```
+
+Auch nach der Trennung der Nutzerzahlen nach Geschlecht ist das vorherige Muster noch sichtbar. Jedoch ist klar erkennbar, dass deutlich mehr Männer das Fahrradangebot nutzen als Frauen. Hier kann weitere Forschung seitens des Unternehmens oder der Stadt New York betrieben werden, um herauszufinden, warum im Verhältnis zu den Männern so wenige Frauen das Angebot nutzen. Hieraus können dann Strategien abgeleitet werden, um mehr Frauen anzusprechen und sie als Kunden zu gewinnen.
+
+In einem nächsten Schritt werden die durchschnittlichen Nutzerzahlen, sowie die durchschnittliche Fahrtdauer pro Wochentag betrachtet.
+
+```{r}
+p <- q2_starts %>%
+  group_by(wday = wday(date_start, label = T, abbr = F, week_start = 1)) %>%
+  summarise(user_mean = round(sum(anzahl)/365)) %>%
+  ggplot(aes(wday, user_mean)) +
+  geom_line(colour = "cadetblue", size = 0.75, group = 1) +
+  geom_point(colour = "cadetblue", size = 1.5) +
+  theme_light() +
+  labs(title = "Durschnittliche Nutzeranzahl Pro Wochentag", y = "Durchschnittliche Nutzeranzahl",
+       x = "Wochentag")
+
+p1 <- q2_starts %>%
+  group_by(wday = wday(date_start, label = T, abbr = F, week_start = 1)) %>%
+  summarise(mean_tripduration = mean(avg_tripduration)) %>%
+  ggplot(aes(wday, mean_tripduration)) +
+  geom_line(colour = "cadetblue", size = 0.75, group = 1) +
+  geom_point(colour = "cadetblue", size = 1.5) +
+  theme_light() +
+  labs(title = "Durschnittliche Fahrtdauer Pro Wochentag", y = "Durchschnittliche Fahrtdauer",
+       x = "Wochentag")
+
+grid.arrange(p, p1, nrow = 2)
+```
+
+Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
+Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
+
+Um weitere Anhaltspunkte für die Nutzung zu erhalten, werden die Nutzerzahlen eines Tages in Stundenintervallen betrachtet.
+
+```{r}
+hourly_starts %>%
+  group_by(start_hour) %>%
+  summarise(user_mean = round(sum(user_count)/365)) %>%
+  ggplot(aes(start_hour, user_mean)) +
+  geom_line(colour = "cadetblue4", size = 0.75) +
+  geom_point(colour = "cadetblue4", size = 1.5) +
+  theme_light() +
+  labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde", x = "Stunde", 
+       y = "Durchschnittliche Nutzeranzahl")
+```
+
+Auch hier kann ein Muster erkannt werden. Von 5 Uhr bis 9 Uhr morgens steigen die Nutzerzahlen und fallen danach ab, um von 15 bis 17 Uhr wieder anzusteigen. Dies spricht für die zuvor geäußerte Vermutung, dass viele Kunden die Fahrräder für den Arbeitsweg nutzen. Am Vormittag und Nachmittag sind die Nutzerzahlen am höchsten. Dies kann den Arbeitsbeginn und das Arbeitsende markieren.
+
+Auch hier werden nun die Nutzerzahlen von Männern und Frauen betrachtet, um festzustellen, ob Unterschiede in der Nutzung bestehen.
+
+```{r}
+hourly_starts %>%
+  group_by(start_hour) %>%
+  summarise(male_mean = round(sum(male_user_count)/365),
+            female_mean = round(sum(female_user_count)/365)) %>%
+  ggplot() +
+  geom_line(aes(start_hour, male_mean, colour = "cadetblue"), size = 0.75) +
+  geom_line(aes(start_hour, female_mean, colour = "cadetblue4"), size = 0.75) +
+  scale_colour_manual(name = "Gender", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
+                      labels = c("Male", "Female")) +
+  theme_light() +
+  labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde Nach Geschlecht",
+       y = "Durchschnittliche Nutzeranzahl", x = "Stunde")
+```
+
+Es ist zu sehen, dass das Muster aus der vorherigen Visualisierung für beide Geschlechter erhalten bleibt. Es ist jedoch ebenfalls zu sehen, dass deutlich weniger Frauen als Männer die Fahrräder nutzen. Dies stimmt mit de Beobachtungen der monatlichen Nutzerzahlen überein. Auch hier kann es empfehlenswert für den Anbieter und die Stadt New York sein Forschungen anzustrengen, die die Gründe hierfür erörtern. So können Frauen, die beispielsweise lieber das Taxi nutzen als das Rad, vermehrt und besser auf sie abgestimmt angesprochen werden.
+
+Um mehr über die Nutzer zu erfahren, wird nun das durchschnittliche Alter der Nutzer pro Stunde betrachtet.
+
+```{r}
+hourly_starts %>%
+  group_by(start_hour) %>%
+  summarise(mean_age = mean(avg_age)) %>%
+  ggplot(aes(start_hour, mean_age)) +
+  geom_line(colour = "cadetblue", size = 0.75) +
+  geom_point(colour = "cadetblue", size = 1.5) +
+  theme_light() +
+  labs(title = "Durschnittliches Alter Der Nutzer Pro Stunde", y = "Durchschnittliches Alter",
+       x = "Stunde")
+```
+
+Es ist zu erkennen, dass die Nutzer am Abend und in der Nacht jünger sind, als die Nutzer am Tag. Hierfür kann es verschiedene Gründe geben. Zum Beispiel kann es sein, dass jüngere Kunden eher nachts ausgehen und für den Heimweg das Rad nehmen. Dies kann allerdings nicht abschließend bestätig werden, da zu wenig über die Nutzer bekannt ist. Es kann sich hier ebenfalls lohnen, die Altersstruktur der Nutzer genauer zu betrachten, um neue Nutzergruppen zu identifizieren. Es könnte beispielsweise sein, dass sich die Nutzer, die mit dem Rad zu Arbeit fahren, in mehr als der Nutzungsart von denjenigen unterscheiden, die nachts mit dem Rad von einer Feier nach Hause fahren. In der Konsequenz können die unterschiedlichen Nutzergruppen besser abgestimmt auf ihr Alter und den Nutzungszweck angesprochen werden.
+
+In einer letzten Grafik wird die durchschnittliche Fahrtdauer pro Stunde betrachtet.
+
+```{r}
+hourly_starts %>%
+  group_by(start_hour) %>%
+  summarise(mean_tripduration = mean(avg_tripduration)) %>%
+  ggplot(aes(start_hour, mean_tripduration)) +
+  geom_line(colour = "cadetblue", size = 0.75) +
+  geom_point(colour = "cadetblue", size = 1.5) +
+  theme_light() +
+  labs(title = "Durschnittliche Fahrtdauer Pro Stunde", y = "Durchschnittliche Fahrtdauer",
+       x = "Stunde")
+```
+
+Die durchschnittliche Fahrtzeit pro Stunde unterscheidet sich nur leicht. Sie bewegt sich in einem Rahmen von 700 bis 900 Sekunden bzw. 11.5 und 15 Minuten. Am längsten ist die Fahrtzeit in der Zeit zwischen 2 und 3 Uhr morgens. Dies könnte darauf hindeuten, dass die Kunden nachts eher weiter entfernt von ihrem Wohnort aufhalten.
 ### heat map
 
 ```{r}
