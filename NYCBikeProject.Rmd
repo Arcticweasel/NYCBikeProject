@@ -605,24 +605,24 @@ hourly_starts %>%
 
 Auch hier kann ein Muster erkannt werden. Von 5 Uhr bis 9 Uhr morgens steigen die Nutzerzahlen und fallen danach ab, um von 15 bis 17 Uhr wieder anzusteigen. Dies spricht für die zuvor geäußerte Vermutung, dass viele Kunden die Fahrräder für den Arbeitsweg nutzen. Am Vormittag und Nachmittag sind die Nutzerzahlen am höchsten. Dies kann den Arbeitsbeginn und das Arbeitsende markieren.
 
-Auch hier werden nun die Nutzerzahlen von Männern und Frauen betrachtet, um festzustellen, ob Unterschiede in der Nutzung bestehen.
+Als nächstes werden nun die Nutzerzahlen getrennt nach Abonnement (usertype) betrachtet, um festzustellen, ob Unterschiede in der täglichen Nutzung bestehen.
 
 ```{r}
 hourly_starts %>%
   group_by(start_hour) %>%
-  summarise(male_mean = round(sum(male_user_count)/365),
-            female_mean = round(sum(female_user_count)/365)) %>%
+  summarise(subscriber_mean = round(sum(subscriber_count)/365),
+            customer_mean = round(sum(customer_count)/365)) %>%
   ggplot() +
-  geom_line(aes(start_hour, male_mean, colour = "cadetblue"), size = 0.75) +
-  geom_line(aes(start_hour, female_mean, colour = "cadetblue4"), size = 0.75) +
-  scale_colour_manual(name = "Gender", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
-                      labels = c("Male", "Female")) +
+  geom_line(aes(start_hour, subscriber_mean, colour = "cadetblue"), size = 0.75) +
+  geom_line(aes(start_hour, customer_mean, colour = "cadetblue4"), size = 0.75) +
+  scale_colour_manual(name = "User Type", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
+                      labels = c("Subscriber", "Customer")) +
   theme_light() +
-  labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde Nach Geschlecht",
+  labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde Nach Abonnement",
        y = "Durchschnittliche Nutzeranzahl", x = "Stunde")
 ```
 
-Es ist zu sehen, dass das Muster aus der vorherigen Visualisierung für beide Geschlechter erhalten bleibt. Es ist jedoch ebenfalls zu sehen, dass deutlich weniger Frauen als Männer die Fahrräder nutzen. Dies stimmt mit de Beobachtungen der monatlichen Nutzerzahlen überein. Auch hier kann es empfehlenswert für den Anbieter und die Stadt New York sein Forschungen anzustrengen, die die Gründe hierfür erörtern. So können Frauen, die beispielsweise lieber das Taxi nutzen als das Rad, vermehrt und besser auf sie abgestimmt angesprochen werden.
+Es ist zu sehen, dass für die Nutzergruppe, die ein jährliches Abo hat (Subscriber), das stündliche Muster erhalten bleibt. Jeweils morgens und nachmittags zu Arbeitsbeginn und -ende nutzen die meisten Kunden das Angebot. Die Nutzergruppe Customer, die nur einen ein- oder drei-Tages-Pass nutzen ist stark unterrepräsentiert. Dies kann darauf schließen lassen, dass das Angebot eher von Personen genutzt wird, die dies regelmäßig nutzen wollen, wie z.B. für den Arbeitsweg, und eher nicht für z.B. Tagesausflüge. Ähnlich wie bei den starken Unterschieden in der Nutzung bei den Geschlechtern, kann es hier lohnenswert sein die Hintergründe zu betrachten und weiter zu erforschen, um neue Nutzergruppen zu aquirieren.
 
 Um mehr über die Nutzer zu erfahren, wird nun das durchschnittliche Alter der Nutzer pro Stunde betrachtet.
 
@@ -655,6 +655,79 @@ hourly_starts %>%
 ```
 
 Die durchschnittliche Fahrtzeit pro Stunde unterscheidet sich nur leicht. Sie bewegt sich in einem Rahmen von 700 bis 900 Sekunden bzw. 11.5 und 15 Minuten. Am längsten ist die Fahrtzeit in der Zeit zwischen 2 und 3 Uhr morgens. Dies könnte darauf hindeuten, dass die Kunden nachts eher weiter entfernt von ihrem Wohnort aufhalten.
+
+### Ein Tag in New York
+
+Um die Nutzerströme zwischen den Stationen zu den verschiedenen Tageszeiten sichtbar zu machen, folgt eine animierte Grafik, die jeden Nutzer zeigt, der am 01.06.2016 ein Rad entliehen und wieder abgegeben hat.
+
+```{r}
+library(geojsonio)
+library(move)
+library(moveVis)
+
+#load data for june 2016
+df6 <- read_rds("Data/Bike_Data_Jun.RDS")
+df6$starttime <- mdy_hms(df6$starttime)
+df6$stoptime <- mdy_hms(df6$stoptime)
+
+#add the column track_id and tidy the data so that each start and each stop gets its own row
+df6 <- rowid_to_column(df6, "track_id")
+geo <- df6 %>%
+  pivot_longer(cols = c(starttime, stoptime), names_to = "datetime", values_to = "timestamp")
+geo1 <- df6 %>%
+  pivot_longer(cols = c(start_station_id, end_station_id), names_to = "station", values_to = "station_id")
+geo2 <- df6 %>%
+  pivot_longer(cols = c(start_station_latitude, end_station_latitude), names_to = "station", values_to = "station_lat")
+geo3 <- df6 %>%
+  pivot_longer(cols = c(start_station_longitude, end_station_longitude), names_to = "station", values_to = "station_long")
+
+geo_rdy <- cbind(geo, geo1[,c("station_id")], geo2[,c("station_lat")], geo3[,c("station_long")])
+geo_rdy <- as_tibble(geo_rdy)
+
+geo_final <- geo_rdy %>% dplyr::select(track_id, timestamp, station_id, station_lat, station_long)
+
+#remove unnecessary data frames
+rm(geo)
+rm(geo1)
+rm(geo2)
+rm(geo3)
+rm(geo_rdy)
+
+#process the data, so that only complete cases from 01.06.2016 with a distinct start- and end-station are included
+geo_final <- geo_final %>%
+  filter(date(timestamp) == "2016-06-01")
+geo_unique <- unique(c(geo_final[,1], geo_final[,3], geo_final[,4], geo_final[,5]))
+geo_unique <- as.data.frame(geo_unique)
+colnames(geo_unique) <- c("track_id", "station_id", "station_lat", "station_long")
+geo_unique <- geo_unique %>% distinct()
+geo_unique <- geo_unique[geo_unique$track_id %in% names(which(table(geo_unique$track_id) == 2)), ]
+geo_final <- inner_join(geo_unique, geo_final, by = c("track_id", "station_id", "station_lat", "station_long"))
+
+#import the map, onto which will be projected
+map <- geojson_read("Data/new-york-city-boroughs.geojson", what = "sp")
+
+#create an object of class move
+geo_move <- df2move(geo_final, proj = '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0', 
+        track_id = "track_id", x = "station_long", y = "station_lat", time = "timestamp")
+
+#align the movement on one scale FEHLER! Nachfolgender Code geht nicht für alle Datenpunkte
+geo_aligned <- align_move(geo_move, res = 1, digit = 0, unit = "hours")
+
+#create frames for movement
+geo_frames <- frames_spatial(geo_aligned, map_service = "osm", map_type = "watercolor", alpha = 0.5) %>%
+  add_labels(x = "Longitude", y = "Latitude", title = "Movement Of Cyclists", 
+             subtitle = "First Week Of June 2016") %>% 
+  add_northarrow() %>%
+  add_scalebar() %>%
+  add_timestamps(geo_aligned, type = "label") %>%
+  add_progress()
+
+#animate frames and save as .gif
+animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
+
+```
+
+![Ein Tag In New York](movement_of_cyclists_6_2016.gif)
 ### heat map
 
 ```{r}
@@ -813,7 +886,6 @@ m <- leaflet(stations) %>%
 
 m 
 ```
-
 
 
 
