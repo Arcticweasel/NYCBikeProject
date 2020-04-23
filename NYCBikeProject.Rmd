@@ -731,66 +731,158 @@ animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
 ### heat map
 
 ```{r}
-library(geojsonio)
+# load packeges
+
+library(tigris)
+library(dplyr)
+library(leaflet)
+library(sp)
+library(ggmap)
+library(maptools)
 library(broom)
-library(cartography)
+library(httr)
+library(rgdal)
 
-# load geojson
+# load a map of nyc, first lets look for the zipcodes
 
-spdf <- geojson_read("Data/new-york-city-boroughs.geojson",  what = "sp")
- 
- 
-# Now I can plot this shape easily as described before:
+lookup_code("New York", "New York")
 
-ggplot() +
-  geom_polygon(data = spdf, aes( x = long, y = lat, group = group), fill="white", color="grey") +
-  theme_void() +
-  coord_map()
+# load the different borrows of new york into nyc_tracts with tigris
 
+nyc_tracts <- tracts(state = '36', county = c('061','047','081','005','085'))
 
-q2_starts_test <- rename(q2_starts, long = start_station_longitude.x)
-q2_starts_test <- rename(q2_starts, lat = start_station_latitude.x)
+summary(nyc_tracts)
 
+# plot tracts
+
+plot(nyc_tracts)
 
 
-ggplot() +
-  geom_polygon(data = spdf, aes( x = long, y = lat, group = group)) +
-  theme_void() +
-  coord_map()
+
+# get the neighborhoods
 
 
-# Build a choropleth
-choroLayer(spdf = spdf, df = q2_starts, var = "anzahl" , legend.pos = "right")
-title("Population in 2008")
+r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
+nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
+
+
+# tidy neighbourhoods from spatial polygon data frame into plain data frame to use it with ggplot
+
+nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
+
+
+ggplot() + 
+  geom_polygon(data=nyc_neighborhoods_df, aes(x=long, y=lat, group=group), color="blue", fill=NA)
+
+
+# use leaflet with neighbourhoods
+
+leaflet(nyc_neighborhoods) %>%
+  addTiles() %>% 
+  addPolygons(popup = ~neighborhood) %>%
+  addProviderTiles("CartoDB.Positron")
+
+# load stations as points
+
+points <- stations %>%
+  select(start_station_longitude.x, start_station_latitude.x, totalusers)
+
+points$start_station_name <- as.factor(points$start_station_name)
+
+points <- as.data.frame(points)
+
+# format points into a spatial polygon data frame
+
+points_spdf <- points
+coordinates(points_spdf) <- ~start_station_longitude.x + start_station_latitude.x
+proj4string(points_spdf) <- proj4string(nyc_neighborhoods)
+matches <- over(points_spdf, nyc_neighborhoods)
+points <- cbind(points, matches)
+
+
+# look on the map with the stations and neighborhoods
+
+
+leaflet(nyc_neighborhoods) %>%
+  addTiles() %>% 
+  addPolygons(popup = ~neighborhood) %>% 
+  addMarkers(~start_station_longitude.x, ~start_station_latitude.x, popup = ~start_station_name, data = points) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-73.98, 40.75, zoom = 13)
+
+
+# group by neighborhood
+
+points_by_neighborhood <- points %>%
+  group_by(neighborhood) %>%
+  summarize(userperneighborhood=sum(totalusers))
+
+map_data <- geo_join(nyc_neighborhoods, points_by_neighborhood, "neighborhood", "neighborhood")
+
+pal <- colorNumeric(palette = "RdBu",
+                    domain = range(map_data@data$userperneighborhood, na.rm=T))
+
+leaflet(map_data) %>%
+  addTiles() %>% 
+  addPolygons(fillColor = ~pal(userperneighborhood), popup = ~neighborhood) %>% 
+  addMarkers(~start_station_longitude.x, ~start_station_latitude.x, popup = ~start_station_name, data = points) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-73.98, 40.75, zoom = 13) %>%
+
+addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totalusers", position = "bottomright" )
+
+# map ohne marker
+
+leaflet(map_data) %>%
+  addTiles() %>% 
+  addPolygons(fillColor = ~pal(userperneighborhood), popup = ~neighborhood) %>% 
+  addProviderTiles("CartoDB.Positron") %>%
+  setView(-73.98, 40.75, zoom = 13) %>%
+
+addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totalusers", position = "bottomright" )
+
 ```
+
+
+
+
 
 ```{r}
 # Library
 library(leaflet)
 
+# create stations data frame
+
+ stations <- q2_starts %>%
+  group_by(start_station_name, start_station_latitude.x, start_station_longitude.x) %>%
+  summarise( count = n(), totalusers = sum(anzahl))
+
+stations$count <- NULL
 
 # Create a color palette with handmade bins.
-#mybins <- seq(4, 6.5, by=0.5)
-#mypalette <- colorBin( palette="YlOrBr", domain=quakes$mag, na.color="transparent", bins=mybins)
+mybins <- seq(1000, 50000, by=5000)
+mypalette <- colorBin( palette="YlOrBr", domain=stations$totalusers, na.color="transparent", bins=mybins)
 
 # Prepare the text for the tooltip:
-'mytext <- paste(
-   "Depth: ", quakes$depth, "<br/>", 
-   "Stations: ", quakes$stations, "<br/>", 
-   "Magnitude: ", quakes$mag, sep="") %>%
-  lapply(htmltools::HTML)'
+mytext <- paste(
+   "Name: ", stations$start_station_name, "<br/>", 
+   "Totalusers: ", stations$totalusers, sep="") %>%
+  lapply(htmltools::HTML)
 
-# Final Map
-m <- leaflet(q2_starts) %>% 
+ 
+
+# create Map
+m <- leaflet(stations) %>% 
   addTiles()  %>% 
   setView( lat=40, lng=-74 , zoom=4) %>%
   addProviderTiles("Esri.WorldImagery") %>%
-  addCircleMarkers(~start_station_longitude.x, ~start_station_latitude.x, fillOpacity = 0.7, color="white", radius=8, stroke=FALSE,
-    labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
-  )
+  addCircleMarkers(~start_station_longitude.x, ~start_station_latitude.x, fillColor = ~mypalette(totalusers), fillOpacity = 0.7, color="white", radius=8, stroke=FALSE,
+                   label = mytext,
+                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px",
+                                                direction = "auto")) %>%
+  addLegend( pal=mypalette, values=~totalusers, opacity=0.9, title = "Totalusers", position = "bottomright" )
 
-
-  addLegend( pal=mypalette, values=~mag, opacity=0.9, title = "Magnitude", position = "bottomright" )
+# load map
 
 m 
 ```
