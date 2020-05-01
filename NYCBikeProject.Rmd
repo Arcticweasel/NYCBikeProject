@@ -2,7 +2,9 @@
 title: "NYCBikeProject"
 author: "Laura, Felix"
 date: "7 4 2020"
-output: html_document
+output:
+  rmdformats::readthedown:
+    highlight: kate
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load Packages
 
-```{r}
+```{r include=FALSE}
 library(tidyverse)
 library(lubridate)
 library(imputeTS)
@@ -39,20 +41,21 @@ Nach einigen Diskussionen und Analysen der Daten haben sich zwei interessante Fo
 
 2. Können die Nutzerzahlen pro Tag in Abhängigkeit zum Wetter vorrausgesagt werden?
 
-## Load data
+## Daten Laden
 
-Zunächst wird der Datensatz geladen, der die Wetterdaten enthält.
+Zunächst werden die Datensätze geladen, die die Wetterdaten enthalten. Je Forschungsfrage gibt es einen eigenen Datensatz. Der Datensatz weather enthält tägliche Wetterdaten, wohingegen der Datensatz hourly_weather stündliche Wetterdaten enthält.
 
-```{r}
-#weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
+```{r, eval=FALSE, echo=TRUE}
+weather <- read.csv("Data/weather_data_nyc_centralpark_2016(1).csv")
+hourly_weather <- read.csv("Data/hourly_weather.csv")
 ```
 
 
 Da die Bikesharingdaten von der Stadt New York monatlich gespeichert werden, werden sie zunächst je Monat in einen Data Frame geladen.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
-'januar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201601-citibike-tripdata.csv")
+januar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201601-citibike-tripdata.csv")
 februar <- read_csv("H:/Projekt Daten/201608-citibike-tripdata/201602-citibike-tripdata.csv")
 maerz <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201603-citibike-tripdata.csv")
 april <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201604-citibike-tripdata.csv")
@@ -63,7 +66,7 @@ august <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201608-citibike-tri
 september <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201609-citibike-tripdata.csv")
 oktober <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201610-citibike-tripdata.csv")
 november <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201611-citibike-tripdata.csv")
-dezember <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201612-citibike-tripdata.csv")'
+dezember <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201612-citibike-tripdata.csv")
 ```
 
 
@@ -71,8 +74,8 @@ dezember <-read_csv("H:/Projekt Daten/201608-citibike-tripdata/201612-citibike-t
 
 Da es in R schwierig sein kann mit Spaltennamen zu arbeiten, die Leerzeichen enthalten, werden diese zunächst durch Unterstriche ersetzt.
 
-```{r}
-'names(januar) <- str_replace_all(names(januar), c(" " = "_"))
+```{r, eval=FALSE, echo=TRUE}
+names(januar) <- str_replace_all(names(januar), c(" " = "_"))
 names(februar) <- str_replace_all(names(februar), c(" " = "_"))
 names(maerz) <- str_replace_all(names(maerz), c(" " = "_"))
 names(april) <- str_replace_all(names(april), c(" " = "_"))
@@ -83,13 +86,13 @@ names(august) <- str_replace_all(names(august), c(" " = "_"))
 names(september) <- str_replace_all(names(september), c(" " = "_"))
 names(oktober) <- str_replace_all(names(oktober), c(" " = "_"))
 names(november) <- str_replace_all(names(november), c(" " = "_"))
-names(dezember) <- str_replace_all(names(dezember), c(" " = "_"))'
+names(dezember) <- str_replace_all(names(dezember), c(" " = "_"))
 ```
 
 In einem nächsten Schritt werden die Spaltennamen der Monate Oktober bis Dezember an die Namen der anderen Monate angepasst, damit ein Datensatz entstehen kann, der alle Monate umfasst.
 
-```{r}
-'dezember <- dezember %>%
+```{r, eval=FALSE, echo=TRUE}
+dezember <- dezember %>%
   rename(tripduration = Trip_Duration,
          starttime = Start_Time,
          stoptime = Stop_Time,
@@ -138,13 +141,13 @@ oktober <- oktober %>%
          bikeid = Bike_ID,
          usertype = User_Type,
          birth_year = Birth_Year,
-         gender = Gender)'
+         gender = Gender)
 ```
 
 Aufgrund der Datenmenge werden die Monate einzeln abgespeichert und nach dem Laden zu einem Data Frame zusammengefasst. So ist während der Projektarbeit sichergestellt, dass alle Teammitglieder zu jeder Zeit über GitHub die jeweils aktuellen Daten nutzen können und keine Diskrepanzen entstehen.
 
-```{r}
-'saveRDS(januar, "Bike_Data_Jan.RDS")
+```{r, eval=FALSE, echo=TRUE}
+saveRDS(januar, "Bike_Data_Jan.RDS")
 saveRDS(februar, "Bike_Data_Feb.RDS")
 saveRDS(maerz, "Bike_Data_Mrz.RDS")
 saveRDS(april, "Bike_Data_Apr.RDS")
@@ -155,7 +158,7 @@ saveRDS(august, "Bike_Data_Aug.RDS")
 saveRDS(september, "Bike_Data_Sep.RDS")
 saveRDS(oktober, "Bike_Data_Okt.RDS")
 saveRDS(november, "Bike_Data_Nov.RDS")
-saveRDS(dezember, "Bike_Data_Dez.RDS")'
+saveRDS(dezember, "Bike_Data_Dez.RDS")
 ```
 
 Die einzelnen Datensätze für jeden Monat werden geladen und in einem Datensatz mit dem Namen "bike" zusammengefasst. Da in den Datensätzen Januar bis September die Start- und Stopzeiten als <character> formatiert sind, in den Monaten Oktober bis Dezember aber als Unixtime bzw. bereits richtig umgewandelt als <datetime>, muss vor der Zusammenführung das Format vereinheitlicht werden. Hierfür wird in den Monaten Januar bis September der Datentyp von <character> zu <datetime> umgewandelt. So ist weiteres Arbeiten mit den Datumsangaben problemlos möglich.
@@ -211,27 +214,27 @@ rm(df1, df2, df3, df4, df5, df6, df7, df8, df9, df10, df11, df12)
 
 Im nächsten Schritt des Preprocessing wird im gesamten Datensatz nach fehlenden Werten gesucht und diese entfernt oder ersetzt. Dies ist notwendig, da die späteren Analyseergebnisse durch fehlende Werte beeinträchtigt werden können.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 # Überprüfe auf Missing values
 
-'apply(bike, 2, function(x) sum(is.na(x)))
+apply(bike, 2, function(x) sum(is.na(x)))
 
-apply(weather, 2, function(x) sum(is.na(x)))'
+apply(weather, 2, function(x) sum(is.na(x)))
 
 
-# Mögliche Variante für missing Values beim Wetter
+# Mögliche Variante für missing Values beim Wetter (eventuell rausnehmen? Haben wir nicht genutzt)
 
-#weather_test <- weather
-#is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
-#is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
-#is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')'
+weather_test <- weather
+is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
+is.na(weather_test$snow.fall) <- which(weather$snow.fall == 'T')
+is.na(weather_test$snow.depth) <- which(weather$snow.depth == 'T')
 
-'weather_test$precipitation <- as.numeric(weather_test$precipitation)
+weather_test$precipitation <- as.numeric(weather_test$precipitation)
 
 weather_test[is.na(weather_test$precipitation),"precipitation"] <- 0.01
 
-weather_test_interpolated <- na_interpolation(weather_test$precipitation, option = "spline")'
+weather_test_interpolated <- na_interpolation(weather_test$precipitation, option = "spline")
 ```
 
 Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
@@ -239,33 +242,32 @@ Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um ein
 
 ```{r}
 bike <- na.omit(bike)
+```
+```{r, eval=FALSE, echo=TRUE}
 
+apply(bike, 2, function(x) sum(is.na(x)))
 
-#apply(bike, 2, function(x) sum(is.na(x)))
-
-
-
-'test <- read_rds("Data/Bike_Data_Mrz.RDS") #Erstellen Testdatensatz, da Abfragen sonst zu lang dauern
+#Erstellen Testdatensatz, da Abfragen sonst zu lang dauern (eventuell rausnehmen? Nutzen wir nicht)
+test <- read_rds("Data/Bike_Data_Mrz.RDS") 
 apply(test, 2, function(x) sum(is.na(x)))
 test <- na.omit(test)
 apply(test, 2, function(x) sum(is.na(x)))
-sum(bike$usertype == "Customer")'
+sum(bike$usertype == "Customer")
 ```
 
 
 ### Tidy Data
 
-Um mit den Wetterdaten arbeiten zu können, muss zunächst die Spalte date in das richtige Datumsformat 
-überführt werden. Die Temperaturangaben in Fahrenheit werden in Celsius, die Menge des Regens und des 
-Schnees in Inches in Millimeter umgerechnet. Kann die Menge des gefallenen Regens oder Schnees nicht 
-gemessen werden, wird dies durch ein T gekennzeichnet. Um mit den Daten problemlos arbeiten zu können, 
-wird das T durch den Wert 0.01 ersetzt. So ist ein numerischer Wert vorhanden, der kennzeichnet, dass 
-Regen oder Schnee gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen unverhältnismäßigen 
-Einfluss auf etwaige Analyseergebnisse hat. Die T-Werte werden zunächst durch den Wert 100 ersetzt, da so Probleme beim Umrechnen umgangen werden, die durch z.B. NAs entstehen. In keiner der Spalten kommt vorher der Wert 100 vor, sodass nach dem Umrechnen weiterhin klar ist, welche Werte vorher ein T waren. Nach dem Umrechnen haben diese den Wert 2540 und können problemlos mit 0.01 ersetzt werden.
+#### Tägliche Wetterdaten
 
-```{r}
-'weather$date <- dmy(weather$date)
+Um mit den täglichen Wetterdaten arbeiten zu können, muss zunächst die Spalte date in das richtige Datumsformat überführt werden. Die Temperaturangaben in Fahrenheit werden in Celsius, die Menge des Regens und des Schnees in Inches in Millimeter umgerechnet. Kann die Menge des gefallenen Regens oder Schnees nicht gemessen werden, wird dies durch ein T gekennzeichnet. Um mit den Daten problemlos arbeiten zu können, wird das T durch den Wert 0.01 ersetzt. So ist ein numerischer Wert vorhanden, der kennzeichnet, dass Regen oder Schnee gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen unverhältnismäßigen Einfluss auf etwaige Analyseergebnisse hat. Die T-Werte werden zunächst durch den Wert 100 ersetzt, da so Probleme beim Umrechnen umgangen werden, die durch z.B. NAs entstehen. In keiner der Spalten kommt vorher der Wert 100 vor, sodass nach dem Umrechnen weiterhin klar ist, welche Werte vorher ein T waren. Nach dem Umrechnen haben diese den Wert 2540 und können problemlos mit 0.01 ersetzt werden.
 
+```{r, eval=FALSE, echo=TRUE}
+
+#Datum richtig formatieren
+weather$date <- dmy(weather$date)
+
+#Temperatur in Celsius umrechnen
 weather <- weather %>%
   mutate(maximum.temperature = round((maximum.temperature-32)*5/9, 2),
          minimum.temperature = round((minimum.temperature-32)*5/9, 2),
@@ -275,10 +277,12 @@ levels(weather$precipitation)
 levels(weather$snow.fall)
 levels(weather$snow.depth)
 
+#Niederschlagsmenge formatieren, T-Werte durch 100 ersetzen und zurückformatieren
 weather$precipitation <- as.character(weather$precipitation)
 weather$precipitation[weather$precipitation == "T"] <- 100
 weather$precipitation <- as.double(weather$precipitation)
 
+#Schneefall und -tiefe formatieren, T-Werte durch 100 ersetzten und zurückformatieren
 weather$snow.fall <- as.character(weather$snow.fall)
 weather$snow.fall[weather$snow.fall == "T"] <- 100
 weather$snow.fall <- as.double(weather$snow.fall)
@@ -287,11 +291,13 @@ weather$snow.depth <- as.character(weather$snow.depth)
 weather$snow.depth[weather$snow.depth == "T"] <- 100
 weather$snow.depth <- as.double(weather$snow.depth)
 
+#Regen und Schnee in mm umrechen
 weather <- weather %>%
   mutate(precipitation = round(precipitation*25.4, 2),
          snow.fall = round(snow.fall*25.4, 2),
          snow.depth = round(snow.depth*25.4, 2))
 
+#Die ehemaligen T-Werte (jetzt 2540) mit 0.01 ersetzten
 max(weather$precipitation)
 weather$precipitation[weather$precipitation == 2540] <- 0.01
 
@@ -299,15 +305,65 @@ max(weather$snow.fall)
 weather$snow.fall[weather$snow.fall == 2540] <- 0.01
 
 max(weather$snow.depth)
-weather$snow.depth[weather$snow.depth == 2540] <- 0.01'
+weather$snow.depth[weather$snow.depth == 2540] <- 0.01
 
 # Wetter gespeichert
 
-#saveRDS(weather, "weather_rdy.rds")
+saveRDS(weather, "weather_rdy.rds")
 
-weather <- readRDS("weather_rdy.rds")
 ```
 
+```{r}
+weather <- readRDS("Data/weather_rdy.rds")
+```
+
+#### Stündliche Wetterdaten
+
+```{r, eval= FALSE, echo=TRUE}
+
+#Nur Wetterdaten aus 2016 behalten
+hourly_weather <- hourly_weather %>%
+  filter(date(pickup_datetime) > "2015-12-31" & date(pickup_datetime) < "2017-01-01")
+
+#Fehlende Werte überprüfen
+apply(hourly_weather, 2, function(x) sum(is.na(x)))
+
+#Spalten auswählen
+hourly_weather <- hourly_weather %>%
+  select(pickup_datetime, tempm, wspdm, fog, rain, snow, hail, thunder, tornado)
+
+#Auf fehlende Werte überprüfen und diese Interpolieren
+apply(hourly_weather, 2, function(x) sum(is.na(x)))
+hourly_weather[is.na(hourly_weather$tempm),]
+hourly_weather$tempm <- na_interpolation(hourly_weather$tempm, option = "spline")
+hourly_weather[is.na(hourly_weather$wspdm),]
+hourly_weather$wspdm <- na_interpolation(hourly_weather$wspdm, option = "spline")
+apply(hourly_weather, 2, function(x) sum(is.na(x)))
+
+#Spalten umbenennen
+hourly_weather <- hourly_weather %>%
+  rename(datetime = pickup_datetime,
+         temp = tempm,
+         wspd = wspdm)
+
+#Datum und Stunde trennen
+hourly_weather <- hourly_weather %>%
+  mutate(date = as_date(datetime),
+         hour = hour(datetime))
+hourly_weather$datetime <- NULL         
+
+#Reihenfolge der Spalten festlegen und nur einen Messwert je Stunde behalten
+hourly_weather <- hourly_weather[,c(9,10,1:8)]
+hourly_weather <- hourly_weather %>% distinct(date, hour, .keep_all = T)
+
+#Daten speichern
+saveRDS(hourly_weather, "hourly_weather.RDS")
+
+```
+
+```{r}
+hourly_weather <- read_rds("Data/hourly_weather.RDS")
+```
 
 ### Aggregate Data
 
@@ -318,9 +374,9 @@ weather <- readRDS("weather_rdy.rds")
  
  Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
-```{r}
+```{r, eval= FALSE, echo=TRUE}
 
-'
+#Datensatz mit getrenntem Datum und Stunde erstellen
 bike_q1 <- bike
 bike_q1 <- bike_q1 %>%
   mutate(start_date = as_date(starttime),
@@ -328,6 +384,7 @@ bike_q1 <- bike_q1 %>%
          stop_date = as_date(stoptime),
          stop_hour = hour(stoptime))
 
+#Datensatz für stündliche Starts je Station erstellen und Spalten für die Anzahl der losfahrenden Radfahrer, deren durchschnittliches Alter und die durchschnittliche Fahrtdauer einfügen, sowie Variable für Wochenende
 hourly_starts <- bike_q1 %>%
   group_by(start_date, start_hour, start_station_id, start_station_name, start_station_latitude,
            start_station_longitude) %>%
@@ -336,26 +393,31 @@ hourly_starts <- bike_q1 %>%
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(start_date) == 6 | wday(start_date) == 7, 1,0))
 
+#Datensatz erstellen der nach Stunde, Station und Geschlecht getrennt Fahrer zählt
 gender <- bike_q1 %>%
   group_by(start_date, start_hour, start_station_id, gender) %>%
   summarise(user = n())
 gender <- pivot_wider(gender, names_from = gender, values_from = user)
 
+#Beide Datensätze verbinden und redundante Spalten löschen
 hourly_starts <- cbind(hourly_starts, gender)
 hourly_starts$start_date1 <- NULL
 hourly_starts$start_hour1 <- NULL
 hourly_starts$start_station_id1 <- NULL
 
+#Datensatz erstellen, der nach Stunde, Station und Nutzertyp getrennt Fahrer zählt
 usertype <- bike_q1 %>%
   group_by(start_date, start_hour, start_station_id, usertype) %>%
   summarise(user = n())
 usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
 
+#Beide Datensätze verbinden und redundante Spalten löschen
 hourly_starts <- cbind(hourly_starts, usertype)
 hourly_starts$start_date1 <- NULL
 hourly_starts$start_hour1 <- NULL
 hourly_starts$start_station_id1 <- NULL
 
+#Spalten umbenennen
 hourly_starts <- hourly_starts %>%
   rename(male_user_count = "1",
          female_user_count = "2",
@@ -363,15 +425,18 @@ hourly_starts <- hourly_starts %>%
          subscriber_count = Subscriber,
          customer_count = Customer)
 
+#Fehlende Werte ersetzen
 hourly_starts$male_user_count[is.na(hourly_starts$male_user_count)] <- 0
 hourly_starts$female_user_count[is.na(hourly_starts$female_user_count)] <- 0
 hourly_starts$undefined_user_count[is.na(hourly_starts$undefined_user_count)] <- 0
 hourly_starts$subscriber_count[is.na(hourly_starts$subscriber_count)] <- 0
 hourly_starts$customer_count[is.na(hourly_starts$customer_count)] <- 0
 
+#nicht mehr benötigte Datensätze löschen
 rm(gender)
 rm(usertype)
 
+#Datensatz für stündliche Stops je Station erstellen und Spalten für die Anzahl der losfahrenden Radfahrer, deren durchschnittliches Alter und die durchschnittliche Fahrtdauer einfügen, sowie Variable für Wochenende
 hourly_stops <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
            end_station_longitude) %>%
@@ -380,12 +445,14 @@ hourly_stops <- bike_q1 %>%
             avg_tripduration = mean(tripduration)) %>%
   mutate(weekend = ifelse(wday(stop_date) == 6 | wday(stop_date) == 7, 1,0))
 
+#Datensatz erstellen der nach Stunde, Station und Geschlecht getrennt Fahrer zählt
 gender <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
            end_station_longitude,gender) %>%
   summarise(user = n())
 gender <- pivot_wider(gender, names_from = gender, values_from = user)
 
+#Beide Datensätze verbinden und redundante Spalten löschen
 hourly_stops <- cbind(hourly_stops, gender)
 hourly_stops$stop_date1 <- NULL
 hourly_stops$stop_hour1 <- NULL
@@ -394,12 +461,14 @@ hourly_stops$end_station_name1 <- NULL
 hourly_stops$end_station_latitude1 <- NULL
 hourly_stops$end_station_longitude1 <- NULL
 
+#Datensatz erstellen, der nach Stunde, Station und Nutzertyp getrennt Fahrer zählt
 usertype <- bike_q1 %>%
   group_by(stop_date, stop_hour, end_station_id, end_station_name, end_station_latitude,
            end_station_longitude, usertype) %>%
   summarise(user = n())
 usertype <- pivot_wider(usertype, names_from = usertype, values_from = user)
 
+#Beide Datensätze verbinden und redundante Spalten löschen
 hourly_stops <- cbind(hourly_stops, usertype)
 hourly_stops$stop_date1 <- NULL
 hourly_stops$stop_hour1 <- NULL
@@ -408,6 +477,7 @@ hourly_stops$end_station_name1 <- NULL
 hourly_stops$end_station_latitude1 <- NULL
 hourly_stops$end_station_longitude1 <- NULL
 
+#Spalten umbenennen
 hourly_stops <- hourly_stops %>%
   rename(male_user_count = "1",
          female_user_count = "2",
@@ -415,19 +485,24 @@ hourly_stops <- hourly_stops %>%
          subscriber_count = Subscriber,
          customer_count = Customer)
 
+#Fehlende Werte ersetzen
 hourly_stops$male_user_count[is.na(hourly_stops$male_user_count)] <- 0
 hourly_stops$female_user_count[is.na(hourly_stops$female_user_count)] <- 0
 hourly_stops$undefined_user_count[is.na(hourly_stops$undefined_user_count)] <- 0
 hourly_stops$subscriber_count[is.na(hourly_stops$subscriber_count)] <- 0
 hourly_stops$customer_count[is.na(hourly_stops$customer_count)] <- 0
 
+#Nicht mehr benötigte Datensätze löschen
 rm(gender)
 rm(usertype)
 
+#Aggregierte Datensätze speichern
 saveRDS(hourly_starts, "Data/bike_q1_starts.rds")
 saveRDS(hourly_stops, "Data/bike_q1_stops.rds")
-'
 
+```
+
+```{r}
 hourly_starts <- readRDS("Data/bike_q1_starts.rds")
 hourly_stops <- readRDS("Data/bike_q1_stops.rds")
 
@@ -436,8 +511,8 @@ hourly_stops <- readRDS("Data/bike_q1_stops.rds")
  
  Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
  
-```{r}
-'
+```{r, eval= FALSE, echo=TRUE}
+
 # Kopiere Datensatz in Question2 Datensatz und wandel Date/time Spalte in Date spalte um und füge Sie hinzu
 bike_q2 <- bike
 bike_q2 <- bike_q2 %>%
@@ -506,13 +581,13 @@ rm(bike_q2, bike_q2_starts, bike_q2_starts_gender, bike_q2_stops, bike_q2_stops_
 
 saveRDS(bike_q2_starts_rdy, "Data/bike_q2_starts.rds")
 saveRDS(bike_q2_stops_rdy, "Data/bike_q2_stops.rds")
-'
-
-q2_starts <- read_rds("Data/bike_q2_starts.rds")
-q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 ```
 
+```{r}
+q2_starts <- read_rds("Data/bike_q2_starts.rds")
+q2_stops <- read_rds("Data/bike_q2_stops.rds")
+```
 
 
 ## Visualization
@@ -521,10 +596,12 @@ q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 Um ein Gefühl für die Daten zu bekommen und erste Einblicke in deren Beschaffenheit zu erhalten, werden zunächst einfache Visualisierungen genutzt.
 
-```{r}
+```{r include=FALSE}
 library(ggplot2)
 library(gridExtra)
+theme_set(theme_minimal())
 ```
+
 Zunächst werden die monatlichen Nutzerzahlen betrachtet.
 
 ```{r}
@@ -534,7 +611,6 @@ q2_starts %>%
   ggplot(aes(month, user_sum)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
   geom_point(colour = "cadetblue", size = 1.5) +
-  theme_light() +
   labs(title = "Nutzeranzahl Pro Monat", y = "Nutzeranzahl",
        x = "Monat")
 ```
@@ -553,7 +629,6 @@ q2_starts %>%
   geom_line(aes(month, female_sum, colour = "cadetblue4"), size = 0.75, group = 1) +
   scale_colour_manual(name = "Gender", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
                       labels = c("Male", "Female")) +
-  theme_light() +
   labs(title = "Nutzeranzahl Pro Monat Nach Geschlecht",
        y = "Nutzeranzahl", x = "Monat")
 ```
@@ -569,7 +644,6 @@ p <- q2_starts %>%
   ggplot(aes(wday, user_mean)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
   geom_point(colour = "cadetblue", size = 1.5) +
-  theme_light() +
   labs(title = "Durschnittliche Nutzeranzahl Pro Wochentag", y = "Durchschnittliche Nutzeranzahl",
        x = "Wochentag")
 
@@ -579,7 +653,6 @@ p1 <- q2_starts %>%
   ggplot(aes(wday, mean_tripduration)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
   geom_point(colour = "cadetblue", size = 1.5) +
-  theme_light() +
   labs(title = "Durschnittliche Fahrtdauer Pro Wochentag", y = "Durchschnittliche Fahrtdauer",
        x = "Wochentag")
 
@@ -598,7 +671,6 @@ hourly_starts %>%
   ggplot(aes(start_hour, user_mean)) +
   geom_line(colour = "cadetblue4", size = 0.75) +
   geom_point(colour = "cadetblue4", size = 1.5) +
-  theme_light() +
   labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde", x = "Stunde", 
        y = "Durchschnittliche Nutzeranzahl")
 ```
@@ -617,7 +689,6 @@ hourly_starts %>%
   geom_line(aes(start_hour, customer_mean, colour = "cadetblue4"), size = 0.75) +
   scale_colour_manual(name = "User Type", values = c("cadetblue" = "cadetblue", "cadetblue4" = "cadetblue4"),
                       labels = c("Subscriber", "Customer")) +
-  theme_light() +
   labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde Nach Abonnement",
        y = "Durchschnittliche Nutzeranzahl", x = "Stunde")
 ```
@@ -633,7 +704,6 @@ hourly_starts %>%
   ggplot(aes(start_hour, mean_age)) +
   geom_line(colour = "cadetblue", size = 0.75) +
   geom_point(colour = "cadetblue", size = 1.5) +
-  theme_light() +
   labs(title = "Durschnittliches Alter Der Nutzer Pro Stunde", y = "Durchschnittliches Alter",
        x = "Stunde")
 ```
@@ -649,7 +719,6 @@ hourly_starts %>%
   ggplot(aes(start_hour, mean_tripduration)) +
   geom_line(colour = "cadetblue", size = 0.75) +
   geom_point(colour = "cadetblue", size = 1.5) +
-  theme_light() +
   labs(title = "Durschnittliche Fahrtdauer Pro Stunde", y = "Durchschnittliche Fahrtdauer",
        x = "Stunde")
 ```
@@ -661,7 +730,7 @@ Die durchschnittliche Fahrtzeit pro Stunde unterscheidet sich nur leicht. Sie be
 Um die Nutzerströme zwischen den Stationen zu den verschiedenen Tageszeiten sichtbar zu machen, folgt eine animierte Grafik, die jeden Nutzer zeigt, der am 01.06.2016 ein Rad entliehen und wieder abgegeben hat.
 
 ```{r}
-library(geojsonio)
+'library(geojsonio)
 library(move)
 library(moveVis)
 
@@ -707,7 +776,7 @@ geo_final <- inner_join(geo_unique, geo_final, by = c("track_id", "station_id", 
 map <- geojson_read("Data/new-york-city-boroughs.geojson", what = "sp")
 
 #create an object of class move
-geo_move <- df2move(geo_final, proj = '+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0', 
+geo_move <- df2move(geo_final, proj = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0", 
         track_id = "track_id", x = "station_long", y = "station_lat", time = "timestamp")
 
 #align the movement on one scale FEHLER! Nachfolgender Code geht nicht für alle Datenpunkte
@@ -723,7 +792,7 @@ geo_frames <- frames_spatial(geo_aligned, map_service = "osm", map_type = "water
   add_progress()
 
 #animate frames and save as .gif
-animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
+animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")'
 
 ```
 
@@ -908,3 +977,4 @@ m
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
 https://www.citibikenyc.com/system-data
+https://www.kaggle.com/meinertsen/new-york-city-taxi-trip-hourly-weather-data
