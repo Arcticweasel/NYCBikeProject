@@ -367,11 +367,6 @@ hourly_weather <- read_rds("Data/hourly_weather.RDS")
 
 ### Aggregate Data
 
- Nach einer Diskussion haben wir festgestellt das sich zwei interessante Fragen auftun.
- 
- 1. Können wir die Nutzerzahlen pro STation pro Stunde vorraussagen ?   und
- 2. Können wir die Nutzerzahlen pro Tag in abhängigkeit zum Wetter vorraussagen?
- 
  Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
 ```{r, eval= FALSE, echo=TRUE}
@@ -710,7 +705,7 @@ hourly_starts %>%
 
 Es ist zu erkennen, dass die Nutzer am Abend und in der Nacht jünger sind, als die Nutzer am Tag. Hierfür kann es verschiedene Gründe geben. Zum Beispiel kann es sein, dass jüngere Kunden eher nachts ausgehen und für den Heimweg das Rad nehmen. Dies kann allerdings nicht abschließend bestätig werden, da zu wenig über die Nutzer bekannt ist. Es kann sich hier ebenfalls lohnen, die Altersstruktur der Nutzer genauer zu betrachten, um neue Nutzergruppen zu identifizieren. Es könnte beispielsweise sein, dass sich die Nutzer, die mit dem Rad zu Arbeit fahren, in mehr als der Nutzungsart von denjenigen unterscheiden, die nachts mit dem Rad von einer Feier nach Hause fahren. In der Konsequenz können die unterschiedlichen Nutzergruppen besser abgestimmt auf ihr Alter und den Nutzungszweck angesprochen werden.
 
-In einer letzten Grafik wird die durchschnittliche Fahrtdauer pro Stunde betrachtet.
+In einer weiteren Grafik wird die durchschnittliche Fahrtdauer pro Stunde betrachtet.
 
 ```{r}
 hourly_starts %>%
@@ -725,78 +720,23 @@ hourly_starts %>%
 
 Die durchschnittliche Fahrtzeit pro Stunde unterscheidet sich nur leicht. Sie bewegt sich in einem Rahmen von 700 bis 900 Sekunden bzw. 11.5 und 15 Minuten. Am längsten ist die Fahrtzeit in der Zeit zwischen 2 und 3 Uhr morgens. Dies könnte darauf hindeuten, dass die Kunden nachts eher weiter entfernt von ihrem Wohnort aufhalten.
 
-### Ein Tag in New York
+In der letzten Grafik werden die Nutzerzahlen je Durchschnittstemperatur betrachtet.
 
-Um die Nutzerströme zwischen den Stationen zu den verschiedenen Tageszeiten sichtbar zu machen, folgt eine animierte Grafik, die jeden Nutzer zeigt, der am 01.06.2016 ein Rad entliehen und wieder abgegeben hat.
-
-```{r}
-'library(geojsonio)
-library(move)
-library(moveVis)
-
-#load data for june 2016
-df6 <- read_rds("Data/Bike_Data_Jun.RDS")
-df6$starttime <- mdy_hms(df6$starttime)
-df6$stoptime <- mdy_hms(df6$stoptime)
-
-#add the column track_id and tidy the data so that each start and each stop gets its own row
-df6 <- rowid_to_column(df6, "track_id")
-geo <- df6 %>%
-  pivot_longer(cols = c(starttime, stoptime), names_to = "datetime", values_to = "timestamp")
-geo1 <- df6 %>%
-  pivot_longer(cols = c(start_station_id, end_station_id), names_to = "station", values_to = "station_id")
-geo2 <- df6 %>%
-  pivot_longer(cols = c(start_station_latitude, end_station_latitude), names_to = "station", values_to = "station_lat")
-geo3 <- df6 %>%
-  pivot_longer(cols = c(start_station_longitude, end_station_longitude), names_to = "station", values_to = "station_long")
-
-geo_rdy <- cbind(geo, geo1[,c("station_id")], geo2[,c("station_lat")], geo3[,c("station_long")])
-geo_rdy <- as_tibble(geo_rdy)
-
-geo_final <- geo_rdy %>% dplyr::select(track_id, timestamp, station_id, station_lat, station_long)
-
-#remove unnecessary data frames
-rm(geo)
-rm(geo1)
-rm(geo2)
-rm(geo3)
-rm(geo_rdy)
-
-#process the data, so that only complete cases from 01.06.2016 with a distinct start- and end-station are included
-geo_final <- geo_final %>%
-  filter(date(timestamp) == "2016-06-01")
-geo_unique <- unique(c(geo_final[,1], geo_final[,3], geo_final[,4], geo_final[,5]))
-geo_unique <- as.data.frame(geo_unique)
-colnames(geo_unique) <- c("track_id", "station_id", "station_lat", "station_long")
-geo_unique <- geo_unique %>% distinct()
-geo_unique <- geo_unique[geo_unique$track_id %in% names(which(table(geo_unique$track_id) == 2)), ]
-geo_final <- inner_join(geo_unique, geo_final, by = c("track_id", "station_id", "station_lat", "station_long"))
-
-#import the map, onto which will be projected
-map <- geojson_read("Data/new-york-city-boroughs.geojson", what = "sp")
-
-#create an object of class move
-geo_move <- df2move(geo_final, proj = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0", 
-        track_id = "track_id", x = "station_long", y = "station_lat", time = "timestamp")
-
-#align the movement on one scale FEHLER! Nachfolgender Code geht nicht für alle Datenpunkte
-geo_aligned <- align_move(geo_move, res = 1, digit = 0, unit = "hours")
-
-#create frames for movement
-geo_frames <- frames_spatial(geo_aligned, map_service = "osm", map_type = "watercolor", alpha = 0.5) %>%
-  add_labels(x = "Longitude", y = "Latitude", title = "Movement Of Cyclists", 
-             subtitle = "First Week Of June 2016") %>% 
-  add_northarrow() %>%
-  add_scalebar() %>%
-  add_timestamps(geo_aligned, type = "label") %>%
-  add_progress()
-
-#animate frames and save as .gif
-animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")'
-
+```{r message=FALSE, warning=FALSE}
+q2_starts %>%
+  full_join(weather, by = c("date_start" = "date")) %>%
+  group_by(average.temperature) %>%
+  summarise(user_sum = sum(anzahl)) %>%
+  ggplot(aes(x = average.temperature, y = user_sum)) +
+  geom_point(colour = "cadetblue3", size = 1.5) +
+  geom_smooth(colour = "cadetblue4", se = F) +
+  labs(title = "Nutzeranzahl je Durchschnittstemperatur", x = "Durchschnittstemperatur in Grad Celsius",
+       y = "Nutzeranzahl") +
+  ylim(0,400000)
 ```
 
-![Ein Tag In New York](movement_of_cyclists_6_2016.gif)
+Es ist eine klare Tendenz erkennbar. Mit steigender Temperatur steigt die Anzahl der Nutzer. Ab einer gewissen Temperatur sinken die Nutzerzahlen wieder. Hier lässt sich vermuten, dass es den Nutzern zu warm ist, um Fahrrad zu fahren.
+
 ### heat map
 
 ```{r}
