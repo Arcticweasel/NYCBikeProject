@@ -319,6 +319,8 @@ weather <- readRDS("Data/weather_rdy.rds")
 
 #### Stündliche Wetterdaten
 
+Auch die stündlichen Wetterdaten müssen vor Gebrauch bearbeitet werden. Der Datensatz hat in vielen Spalten sehr viele fehlende Werte. In einem ersten Schritt werden die Spalten ausgesucht, die weiterhin betrachtet werden sollen. Die Spalten Datum, Temperatur in Grad Celsius, Windgeschwindigkeit in Km/h, sowie die binären Spalten Nebel, Regen, Schnee, Hagel, Gewitter und Tornado werden weiterhin genutzt. Die Spalte, die z.B den gefallenen Regen in mm enthält, weißt mehr fehlende Werte auf, als Werte da sind. Da dadurch ein sinnvolles interpolieren der Werte nicht mehr möglich ist, wird diese Variable, sowie einige andere von der weiteren Betrachtung ausgeschlossen. Die Spalten Temperatur und Windgeschwindigkeit weisen einige fehlende Werte auf, die aber aufgrund ihrer geringen Anzahl sinnvoll interpoiert werden können und werden. Hierfür wird die Spline-Interpolation genutzt. Auch in diesem Datensatz wird die Spalte, die Datum und Uhrzeit enthält aufgespalten, sodass Datum und Stunde als getrennte Spalten übrig bleiben. Im letzten Schritt der Aufbereitung werden doppelte Beobachtungen behandelt. Für manche Stunden sind verschiedene Temperaturen und Windgeschwindigkeiten bekannt, die sich jeweils nur marginal unterscheiden. Es wird jeweils der erste gemessene Wert für die weiteren Analysen beibehalten.
+
 ```{r, eval= FALSE, echo=TRUE}
 
 #Nur Wetterdaten aus 2016 behalten
