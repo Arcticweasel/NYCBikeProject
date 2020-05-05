@@ -911,11 +911,16 @@ basemap <- leaflet(map_data) %>%
 basemap %>%
   addMinicharts(
     q2_starts$start_station_longitude.x, q2_starts$start_station_latitude.x,
+    type = "auto",
     chartdata = q2_starts$anzahl,
     time = q2_starts$date_start,
-    colorPalette = colors
-  )
+    colorPalette = colors,
+    transitionTime = 0.1,
+  ) %>%
+  setView(-73.98, 40.75, zoom = 13)
 
+
+?addMinicharts
 ```
 
 
