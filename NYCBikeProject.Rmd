@@ -745,14 +745,21 @@ Es ist eine klare Tendenz erkennbar. Mit steigender Temperatur steigt die Anzahl
 # load packeges
 
 library(tigris)
-library(dplyr)
 library(leaflet)
 library(sp)
-library(ggmap)
 library(maptools)
 library(broom)
 library(httr)
 library(rgdal)
+
+
+# create stations data frame
+
+ stations <- q2_starts %>%
+  group_by(start_station_name, start_station_latitude.x, start_station_longitude.x) %>%
+  summarise( count = n(), totalusers = sum(anzahl))
+
+stations$count <- NULL
 
 # load a map of nyc, first lets look for the zipcodes
 
@@ -859,16 +866,7 @@ addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totaluser
 
 
 ```{r}
-# Library
-library(leaflet)
 
-# create stations data frame
-
- stations <- q2_starts %>%
-  group_by(start_station_name, start_station_latitude.x, start_station_longitude.x) %>%
-  summarise( count = n(), totalusers = sum(anzahl))
-
-stations$count <- NULL
 
 # Create a color palette with handmade bins.
 mybins <- seq(1000, 50000, by=5000)
@@ -898,6 +896,32 @@ m <- leaflet(stations) %>%
 m 
 ```
 
+
+Ich versuche nun die Nutzerzahlen übers Jahr in den verschiedenen Borrows zu animieren.
+
+```{r}
+library(leaflet.minicharts)
+
+basemap <- leaflet(map_data) %>%
+  addTiles() %>% 
+  addPolygons(popup = ~neighborhood) %>%
+  addProviderTiles("CartoDB.Positron")
+
+
+basemap %>%
+  addMinicharts(
+    q2_starts$start_station_longitude.x, q2_starts$start_station_latitude.x,
+    type = "auto",
+    chartdata = q2_starts$anzahl,
+    time = q2_starts$date_start,
+    colorPalette = colors,
+    transitionTime = 0.1,
+  ) %>%
+  setView(-73.98, 40.75, zoom = 13)
+
+
+?addMinicharts
+```
 
 
 ### choropleth map
