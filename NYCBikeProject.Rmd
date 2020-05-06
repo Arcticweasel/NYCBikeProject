@@ -17,6 +17,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(imputeTS)
+library(timeDate)
+library(fastDummies)
 source("Routinen/ANNUtils.r")
 ```
 
@@ -505,7 +507,6 @@ hourly_stops <- readRDS("Data/bike_q1_stops.rds")
 
 ```
 
- 
  Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
  
 ```{r, eval= FALSE, echo=TRUE}
@@ -926,7 +927,81 @@ basemap %>%
 
 ### choropleth map
 
-## analytics
+## Analytics
+
+Um die erste Forschungsfrage beantworten zu können, wird der Datensatz hourly_starts noch weiter angepasst, sowie ein weiterer Datensatz erstellt, der die stündlichen Starts nach den Bezirken (neighborhoods) gruppiert und mehrere Stationen zusammenfasst.
+
+Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach werden wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. 
+
+```{r}
+df <- bike
+df <- df %>%
+  mutate(start_date = as_date(starttime),
+         start_hour = hour(starttime))
+
+df <- df %>%
+  left_join(points, by = c("start_station_name"="start_station_name",
+                           "start_station_latitude"="start_station_latitude.x",
+                           "start_station_longitude"="start_station_longitude.x"))
+
+apply(df, 2, function(x) sum(is.na(x)))
+
+df[is.na(df$neighborhood),]
+
+df$neighborhood[df$start_station_id==160 & is.na(df$neighborhood)] <- "Murray Hill"
+df$boroughCode[df$start_station_id==160 & is.na(df$boroughCode)] <- 1
+df$borough[df$start_station_id==160 & is.na(df$borough)] <- "Manhattan"
+
+df$neighborhood <- fct_explicit_na(df$neighborhood)
+df$boroughCode <- fct_explicit_na(df$boroughCode)
+df$borough <- fct_explicit_na(df$borough)
+
+
+hourly_starts_nh <- df %>%
+  group_by(start_date, start_hour, neighborhood) %>%
+  summarise(user_count = n()) %>%
+  mutate(weekend = ifelse(wday(start_date, week_start = 1) == 6 | wday(start_date, week_start = 1) == 7, 1,0))
+
+hourly_starts_nh <- hourly_starts_nh %>%
+  mutate(weekday = wday(start_date, abbr = F, label = T))
+
+hourly_starts_nh$holiday <- ifelse(isBizday(as.timeDate(hourly_starts_nh$start_date), holidayNYSE(2016))==FALSE,1,0)
+
+hourly_starts_nh <- hourly_starts_nh %>%
+  full_join(hourly_weather, by = c("start_date" = "date", "start_hour" = "hour"))
+
+apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
+hourly_starts_nh[is.na(hourly_starts_nh$neighborhood),] #vom 23.01.-26.01. keine fahrten
+
+hourly_starts_nh <- hourly_starts_nh[complete.cases(hourly_starts_nh[,3:7]),]#wetterdaten vom 23.-26.01 entfernen
+
+apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))#1585 stunden/neighborhoods fehlen werte->interpolieren
+
+hourly_starts_nh[,8:15] <- na_interpolation(hourly_starts_nh[,8:15], option = "spline")
+
+hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
+
+
+```
+```{r}
+library(glmnet)
+q1_nh <- hourly_starts_nh
+
+x <- as.matrix(q1_nh[,-3])
+y <- as.matrix(q1_nh[,3])
+
+
+#set lambdas
+lambdas <- 10^seq(2, -3, by = -.1)
+
+# Setting alpha = 1 implements lasso regression, cross validation for opt. lambda
+lasso_reg <- cv.glmnet(x, y, alpha = 1, lambda = lambdas, nfolds = 3)
+
+# Best 
+lambda_best <- lasso_reg$lambda.min 
+lambda_best
+```
+
 
 ### split data
 
