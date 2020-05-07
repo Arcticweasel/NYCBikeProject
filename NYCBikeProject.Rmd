@@ -972,9 +972,10 @@ Die hier erstellte Grafik wird nicht weiter genutzt und betrachtet. Dies hat ver
 
 ### heat map
 
+Als erstes laden wir einige Plugins zum visualisieren von Maps und Geodaten
+
 ```{r}
 # load packeges
-
 library(tigris)
 library(leaflet)
 library(sp)
@@ -982,8 +983,12 @@ library(maptools)
 library(broom)
 library(httr)
 library(rgdal)
+```
 
 
+Nun kreiere ich einen Stations Dataframe mit den Gesamtnutzerzahlen für das gesamte Jahr.
+
+```{r}
 # create stations data frame
 
  stations <- q2_starts %>%
@@ -991,29 +996,29 @@ library(rgdal)
   summarise( count = n(), totalusers = sum(anzahl))
 
 stations$count <- NULL
-
-# load a map of nyc, first lets look for the zipcodes
-
-lookup_code("New York", "New York")
-
-# load the different borrows of new york into nyc_tracts with tigris
-
-nyc_tracts <- tracts(state = '36', county = c('061','047','081','005','085'))
-
-summary(nyc_tracts)
-
-# plot tracts
-
-plot(nyc_tracts)
+```
 
 
 
+Mit der GET funktion hole ich mir die verschiedenen Neighboorhoods als GeoJSON von einem Link und speicherere diese als GEOJSON.
+
+```{r, eval=FALSE, echo=TRUE}
 # get the neighborhoods
 
 
 r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
+
 nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
 
+
+saveRDS(nyc_neighborhoods, "Data/GEOJSON.rds")
+```
+
+
+GeoJSON laden, umformen für GGPLOT und einmal ausgeben
+
+```{r}
+nyc_neighborhoods <- readRDS("Data/GEOJSON.rds")
 
 # tidy neighbourhoods from spatial polygon data frame into plain data frame to use it with ggplot
 
@@ -1023,7 +1028,12 @@ nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
 ggplot() + 
   geom_polygon(data=nyc_neighborhoods_df, aes(x=long, y=lat, group=group), color="blue", fill=NA)
 
+```
 
+
+Ausgabe der Spartial Data mit LEaflet
+
+```{r}
 # use leaflet with neighbourhoods
 
 leaflet(nyc_neighborhoods) %>%
@@ -1031,6 +1041,12 @@ leaflet(nyc_neighborhoods) %>%
   addPolygons(popup = ~neighborhood) %>%
   addProviderTiles("CartoDB.Positron")
 
+```
+
+
+Einmal Stations als points definieren und in einen spatial polygon dataframe umformen
+
+```{r}
 # load stations as points
 
 points <- stations %>%
@@ -1047,19 +1063,12 @@ coordinates(points_spdf) <- ~start_station_longitude.x + start_station_latitude.
 proj4string(points_spdf) <- proj4string(nyc_neighborhoods)
 matches <- over(points_spdf, nyc_neighborhoods)
 points <- cbind(points, matches)
+```
+
+Einmal die Karte angucken mit leaflet und eingetrgenene Stationen und Neighborhoods mit den Nutzerzahlen
 
 
-# look on the map with the stations and neighborhoods
-
-
-leaflet(nyc_neighborhoods) %>%
-  addTiles() %>% 
-  addPolygons(popup = ~neighborhood) %>% 
-  addMarkers(~start_station_longitude.x, ~start_station_latitude.x, popup = ~start_station_name, data = points) %>%
-  addProviderTiles("CartoDB.Positron") %>%
-  setView(-73.98, 40.75, zoom = 13)
-
-
+```{r}
 # group by neighborhood
 
 points_by_neighborhood <- points %>%
@@ -1071,6 +1080,8 @@ map_data <- geo_join(nyc_neighborhoods, points_by_neighborhood, "neighborhood", 
 pal <- colorNumeric(palette = "RdBu",
                     domain = range(map_data@data$userperneighborhood, na.rm=T))
 
+# look on the map with the stations and neighborhoods
+
 leaflet(map_data) %>%
   addTiles() %>% 
   addPolygons(fillColor = ~pal(userperneighborhood), popup = ~neighborhood) %>% 
@@ -1079,6 +1090,11 @@ leaflet(map_data) %>%
   setView(-73.98, 40.75, zoom = 13) %>%
 
 addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totalusers", position = "bottomright" )
+```
+
+Die Karte ohne die Stationen mit nur den Neighborhoods und der einfärbung der Neighborhoods nach Gesamtnutzerzahlen
+
+```{r}
 
 # map ohne marker
 
@@ -1093,7 +1109,7 @@ addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totaluser
 ```
 
 
-
+Eine Karte mit Stationen ohne NEighborhoods aber mit einfärbung der Stationen nach Nutzerzahlen
 
 
 ```{r}
@@ -1139,6 +1155,7 @@ basemap <- leaflet(map_data) %>%
   addProviderTiles("CartoDB.Positron")
 
 
+
 basemap %>%
   addMinicharts(
     q2_starts$start_station_longitude.x, q2_starts$start_station_latitude.x,
@@ -1153,6 +1170,72 @@ basemap %>%
 
 ?addMinicharts
 ```
+
+
+Neuer versuch mit Daten die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einnen anderen Datensatz.
+
+```{r}
+
+newTest <- bike
+newTest <- newTest %>%
+  mutate(start_date = as_date(starttime))
+
+newTest <- newTest %>%
+  left_join(points, by = c("start_station_name"="start_station_name",
+                           "start_station_latitude"="start_station_latitude.x",
+                           "start_station_longitude"="start_station_longitude.x"))
+
+newTest <- newTest %>%
+  mutate(stop_date=date(newTest$stoptime))
+
+newTest$totalusers <- NULL
+newTest$X.id <- NULL
+newTest$usertype <- NULL
+newTest$start_hour <- NULL
+newTest$starttime <- NULL
+newTest$stoptime <- NULL
+newTest$boroughCode <- NULL
+newTest$borough <- NULL
+
+
+newTest$neighborhood[newTest$start_station_id==160 & is.na(newTest$neighborhood)] <- "Murray Hill"
+
+
+newTest$neighborhood <- fct_explicit_na(newTest$neighborhood)
+
+
+newTest_agg1 <- newTest %>%
+  group_by(neighborhood) %>%
+  summarise(long = median(start_station_longitude), lat = median(start_station_latitude))
+
+newTest <- left_join(newTest, newTest_agg1, by = "neighborhood")
+
+newTest_agg <- newTest %>%
+  group_by(neighborhood, start_date, long, lat) %>%
+  summarise(users = n())
+
+
+```
+
+Nun versuche ich die Animation mit dem neuen Datensatz.
+
+```{r}
+basemap %>%
+  addMinicharts(
+    newTest_agg$long, newTest_agg$lat,
+    type = "auto",
+    chartdata = newTest_agg$users,
+    showLabels = TRUE,
+    fillColor = pal,
+    width = 45,
+    time = newTest_agg$start_date,
+    colorPalette = colors,
+    transitionTime = 0.1,
+  ) %>%
+  setView(-73.98, 40.75, zoom = 13)
+```
+
+
 
 
 ### choropleth map
