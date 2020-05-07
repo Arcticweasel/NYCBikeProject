@@ -225,7 +225,7 @@ apply(bike, 2, function(x) sum(is.na(x)))
 apply(weather, 2, function(x) sum(is.na(x)))
 
 
-# Mögliche Variante für missing Values beim Wetter (eventuell rausnehmen? Haben wir nicht genutzt)
+# Mögliche Variante für missing Values beim Wetter 
 
 weather_test <- weather
 is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
@@ -249,12 +249,6 @@ bike <- na.omit(bike)
 
 apply(bike, 2, function(x) sum(is.na(x)))
 
-#Erstellen Testdatensatz, da Abfragen sonst zu lang dauern (eventuell rausnehmen? Nutzen wir nicht)
-test <- read_rds("Data/Bike_Data_Mrz.RDS") 
-apply(test, 2, function(x) sum(is.na(x)))
-test <- na.omit(test)
-apply(test, 2, function(x) sum(is.na(x)))
-sum(bike$usertype == "Customer")
 ```
 
 
@@ -311,13 +305,55 @@ weather$snow.depth[weather$snow.depth == 2540] <- 0.01
 
 # Wetter gespeichert
 
-saveRDS(weather, "weather_rdy.rds")
+saveRDS(weather, "Data/weather_daily_2016.rds")
 
 ```
 
 ```{r}
-weather <- readRDS("Data/weather_rdy.rds")
+weather <- readRDS("Data/weather_daily_2016.rds")
 ```
+
+Die Wetterdaten für das Jahr 2017, werden genauso aufbereitet wie die vorherigen. Die Maßeinheiten Fahrenheit und Inches werden wieder in Celsius und Millimeter umgerechnet. Da die Spalte mit der täglichen Durchschnittstemperatur ausschließlich fehlende Werte enthält, wird sie aus dem Mittelwert der minimal und maximal Temperatur ermittelt. Dies ist ebenfalls das Vorgehen des NCDC. Die Spalten Niederschlagsmenge, Schneefall und Schneetiefe enthalten im Jahr 2017 keine T-Werte wie noch im Jahr 2016 und müssen hier nicht dementsprechend aufbereitet werden.
+
+```{r, eval=FALSE, echo=TRUE}
+
+#Daten laden
+weather17 <- read_csv("Data/daily_weather_2017.csv")
+
+#Daten für 2017 auswählen, Spaltennamen dem Vorjahr anpassen und Durchschnittstemperatur berechnen
+weather17 <- weather17 %>%
+  filter(year(DATE) == 2017) %>%
+  select(date = DATE,
+         maximum.temperature = TMAX,
+         minimum.temperature = TMIN,
+         precipitation = PRCP,
+         snow.fall = SNOW,
+         snow.depth = SNWD) %>%
+  mutate(average.temperature = (minimum.temperature+maximum.temperature)/2)
+
+#Fehlende Werte überprüfen
+apply(df, 2, function(x) sum(is.na(x)))
+
+#Einheiten umrechnen
+weather17 <- weather17 %>%
+  mutate(maximum.temperature = round((maximum.temperature-32)*5/9, 2),
+         minimum.temperature = round((minimum.temperature-32)*5/9, 2),
+         average.temperature = round((average.temperature-32)*5/9, 2),
+         precipitation = round(precipitation*25.4, 2),
+         snow.fall = round(snow.fall*25.4, 2),
+         snow.depth = round(snow.depth*25.4, 2))
+
+#Data Frame wie Vorjahr sortieren
+weather17 <- weather17[,c(1:3,7,4:6)]
+
+#Datensatz speichern
+saveRDS(weather17, "Data/weather_daily_2017.RDS")
+```
+
+```{r}
+weather_2017 <- read_rds("Data/weather_daily_2017.RDS")
+```
+
 
 #### Stündliche Wetterdaten
 
@@ -365,9 +401,133 @@ saveRDS(hourly_weather, "hourly_weather.RDS")
 
 ```
 
-```{r}
-hourly_weather <- read_rds("Data/hourly_weather.RDS")
+Aufgrund der dünnen Datenlage zum stündlichen Wetter im Jahr 2017, werden zwei andere Datensätze für die Jahre 2016 und 2017 genutzt, die das stündliche Wetter enthalten. 
+
+Auch diese müssen zunächst aufbereitet werden. Da sehr viele Variablen vorhanden sind, die zum Teil viele fehlende Werte enthalten werden die stündlichen Daten für die Temperatur an der Messstation in Fahrenheit, die Windgeschwindigkeit in Meilen pro Stunde, sowie die Niederschlagsmenge in inches ausgewählt. Fahrenheit wird in Celsius, Meilen pro Stunde in Kilometer pro Stunde und inches in Millimeter umgerechnet. Kann die Menge des gefallenen Regens nicht gemessen werden, wird dies durch ein T gekennzeichnet. Um mit den Daten problemlos arbeiten zu können, wird das T durch den Wert 0.01 ersetzt. So ist ein numerischer Wert vorhanden, der kennzeichnet, dass Regen gefallen ist. Jedoch ist dieser sehr gering, sodass er keinen unverhältnismäßigen Einfluss auf etwaige Analyseergebnisse hat. Die T-Werte werden zunächst durch den Wert 100 ersetzt, da so Probleme beim Umrechnen umgangen werden, die durch z.B. NAs entstehen. In keiner der Spalten kommt vorher der Wert 100 vor, sodass nach dem Umrechnen weiterhin klar ist, welche Werte vorher ein T waren. Nach dem Umrechnen haben diese den Wert 2540 und können problemlos mit 0.01 ersetzt werden. Sind mehrere Werte für eine Stunde vorhanden, so wird nur der erste Wert weiter berücksichtigt. Verbliebene fehlende Werte werden mit Hilfe der Spline-Interpolation ersetzt. Dies geschieht für die Jahre 2016 und 2017 getrennt. 
+
+```{r, eval=FALSE, echo=TRUE}
+
+#Daten einlesen
+df <- read_csv("Data/hourly_weather_new.csv")
+
+#stündliche Daten auswählen
+df <- df %>% select(DATE, HourlyAltimeterSetting, HourlyDewPointTemperature, HourlyDryBulbTemperature, 
+                    HourlyPrecipitation, HourlyPresentWeatherType, HourlyPressureChange,   HourlyPressureTendency,
+                    HourlyRelativeHumidity, HourlySeaLevelPressure, HourlySkyConditions,  HourlyStationPressure,
+                    HourlyVisibility, HourlyWetBulbTemperature, HourlyWindDirection, HourlyWindGustSpeed, 
+                    HourlyWindSpeed)
+
+#Fehlende Werte überprüfen
+apply(df, 2, function(x) sum(is.na(x)))
+
+#Temperatur, Windgeschwindigkeit und Niederschlagsmenge auswählen
+df <- df %>% select(DATE, HourlyDryBulbTemperature, HourlyPrecipitation, HourlyWindSpeed)
+
+#Datensatz nach Jahren 2016 und 2017 aufsplitten
+df16 <- df %>%
+  filter(year(DATE)==2016)
+df17 <- df %>%
+  filter(year(DATE)==2017)
+
+#Jeweils fehlende Werte überprüfen
+apply(df16, 2, function(x) sum(is.na(x)))
+apply(df17, 2, function(x) sum(is.na(x)))
+
+#2016
+#Datum und Stunde trennen, sowie Uhrzeit als eigene Spalte behalten
+df16 <- df16 %>%
+  mutate(date = as_date(DATE),
+         hour = hour(DATE),
+         time = paste(hour(DATE), minute(DATE), second(DATE), sep = ":"))
+
+#Alle Zeilen mit Uhrzeit 23:59:00 entfernen, da letzter Tagesreport mit allen Werten NA
+df16 <- df16 %>% 
+  filter(time != "23:59:0")
+df16$time <- NULL
+df16$DATE <- NULL
+
+#Temperatur und Windgeschwindigkeit umrechnen
+df16 <- df16 %>%
+  mutate(temp = round((HourlyDryBulbTemperature-32)*5/9, 2),
+         wdsp = round(HourlyWindSpeed*1.609344, 2))
+df16$HourlyDryBulbTemperature <- NULL
+df16$HourlyWindSpeed <- NULL
+
+#Niederschlagsmenge umbenennen, Werte mit Buchstaben korrigieren, T durch 1000 ersetzten, in mm umrechnen und die ehemaligen T-Werte in 0.01mm ändern
+df16 <- df16 %>%
+  rename(precip = HourlyPrecipitation)
+
+df16$precip <- str_replace_all(df16$precip, c("s" = ""))
+df16$precip[df16$precip == "T"] <- 1000
+df16$precip <- as.double(df16$precip)
+
+df16 <- df16 %>%
+  mutate(precip = round(precip*25.4, 2))
+max(df16$precip, na.rm = T)
+df16$precip[df16$precip == 25400] <- 0.01
+
+#Reihenfolge der Spalten ändern und nur eine Zeile pro Stunde behalten
+df16 <- df16[,c(2,3,4,5,1)]
+df16 <- df16 %>% 
+  distinct(date, hour, .keep_all = T)
+
+#Fehlende Werte interpolieren
+df16[,3:5] <- na_interpolation(df16[,3:5], option = "spline")
+apply(df16, 2, function(x) sum(is.na(x)))
+
+#2017
+#Datum und Stunde trennen, sowie Uhrzeit als eigene Spalte behalten
+df17 <- df17 %>%
+  mutate(date = as_date(DATE),
+         hour = hour(DATE),
+         time = paste(hour(DATE), minute(DATE), second(DATE), sep = ":"))
+
+#Alle Zeilen mit Uhrzeit 23:59:00 entfernen, da letzter Tagesreport mit allen Werten NA
+df17 <- df17 %>% 
+  filter(time != "23:59:0")
+df17$time <- NULL
+df17$DATE <- NULL
+
+#Temperatur und Windgeschwindigkeit umrechnen
+df17 <- df17 %>%
+  mutate(temp = round((HourlyDryBulbTemperature-32)*5/9, 2),
+         wdsp = round(HourlyWindSpeed*1.609344, 2))
+df17$HourlyDryBulbTemperature <- NULL
+df17$HourlyWindSpeed <- NULL
+
+#Niederschlagsmenge umbenennen, Werte mit Buchstaben korrigieren, T durch 1000 ersetzten, in mm umrechnen und die ehemaligen T-Werte in 0.01mm ändern
+df17 <- df17 %>%
+  rename(precip = HourlyPrecipitation)
+
+df17$precip <- str_replace_all(df17$precip, c("s" = ""))
+df17$precip[df17$precip == "T"] <- 1000
+df17$precip <- as.double(df17$precip)
+
+df17 <- df17 %>%
+  mutate(precip = round(precip*25.4, 2))
+max(df17$precip, na.rm = T)
+df17$precip[df17$precip == 25400] <- 0.01
+
+#Reihenfolge der Spalten ändern und nur eine Zeile pro Stunde behalten
+df17 <- df17[,c(2,3,4,5,1)]
+df17 <- df17 %>% 
+  distinct(date, hour, .keep_all = T)
+
+#Fehlende Werte interpolieren
+df17[,3:5] <- na_interpolation(df17[,3:5], option = "spline")
+apply(df17, 2, function(x) sum(is.na(x)))
+
+#Daten speichern
+saveRDS(df16, "Data/hourly_weather_2016.RDS")
+saveRDS(df17, "Data/hourly_weather_2017.RDS")
 ```
+
+```{r}
+hourly_weather_16 <- read_rds("Data/hourly_weather_2016.RDS")
+hourly_weather_17 <- read_rds("Data/hourly_weather_2017.RDS")
+```
+
+Im weiteren Verlauf dieser Arbeit wird mit den Datensätzen hourly_weather_16 und hourly_weather_2017 gearbeitet.
 
 ### Aggregate Data
 
@@ -740,6 +900,76 @@ q2_starts %>%
 
 Es ist eine klare Tendenz erkennbar. Mit steigender Temperatur steigt die Anzahl der Nutzer. Ab einer gewissen Temperatur sinken die Nutzerzahlen wieder. Hier lässt sich vermuten, dass es den Nutzern zu warm ist, um Fahrrad zu fahren.
 
+### Ein Tag in New York
+
+Um die Nutzerströme zwischen den Stationen zu den verschiedenen Tageszeiten sichtbar zu machen, folgt eine animierte Grafik, die jeden Nutzer zeigt, der am 01.06.2016 ein Rad entliehen und wieder abgegeben hat.
+
+```{r, eval=FALSE, echo=TRUE}
+library(geojsonio)
+library(move)
+library(moveVis)
+
+#load data for june 2016
+df6 <- read_rds("Data/Bike_Data_Jun.RDS")
+df6$starttime <- mdy_hms(df6$starttime)
+df6$stoptime <- mdy_hms(df6$stoptime)
+
+#add the column track_id and tidy the data so that each start and each stop gets its own row
+df6 <- rowid_to_column(df6, "track_id")
+geo <- df6 %>%
+  pivot_longer(cols = c(starttime, stoptime), names_to = "datetime", values_to = "timestamp")
+geo1 <- df6 %>%
+  pivot_longer(cols = c(start_station_id, end_station_id), names_to = "station", values_to = "station_id")
+geo2 <- df6 %>%
+  pivot_longer(cols = c(start_station_latitude, end_station_latitude), names_to = "station", values_to = "station_lat")
+geo3 <- df6 %>%
+  pivot_longer(cols = c(start_station_longitude, end_station_longitude), names_to = "station", values_to = "station_long")
+geo_rdy <- cbind(geo, geo1[,c("station_id")], geo2[,c("station_lat")], geo3[,c("station_long")])
+geo_rdy <- as_tibble(geo_rdy)
+geo_final <- geo_rdy %>% dplyr::select(track_id, timestamp, station_id, station_lat, station_long)
+
+#remove unnecessary data frames
+rm(geo)
+rm(geo1)
+rm(geo2)
+rm(geo3)
+rm(geo_rdy)
+
+#process the data, so that only complete cases from 01.06.2016 with a distinct start- and end-station are included
+geo_final <- geo_final %>%
+  filter(date(timestamp) == "2016-06-01")
+geo_unique <- unique(c(geo_final[,1], geo_final[,3], geo_final[,4], geo_final[,5]))
+geo_unique <- as.data.frame(geo_unique)
+colnames(geo_unique) <- c("track_id", "station_id", "station_lat", "station_long")
+geo_unique <- geo_unique %>% distinct()
+geo_unique <- geo_unique[geo_unique$track_id %in% names(which(table(geo_unique$track_id) == 2)), ]
+geo_final <- inner_join(geo_unique, geo_final, by = c("track_id", "station_id", "station_lat", "station_long"))
+
+#import the map, onto which will be projected
+map <- geojson_read("Data/new-york-city-boroughs.geojson", what = "sp")
+
+#create an object of class move
+geo_move <- df2move(geo_final, proj = "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0", 
+        track_id = "track_id", x = "station_long", y = "station_lat", time = "timestamp")
+
+#align the movement on one scale 
+geo_aligned <- align_move(geo_move, unit = "hours")
+
+#create frames for movement
+geo_frames <- frames_spatial(geo_aligned, map_service = "osm", map_type = "watercolor", alpha = 0.5) %>%
+  add_labels(x = "Longitude", y = "Latitude", title = "Movement Of Cyclists", 
+             subtitle = "First Week Of June 2016") %>% 
+  add_northarrow() %>%
+  add_scalebar() %>%
+  add_timestamps(geo_aligned, type = "label") %>%
+  add_progress()
+
+#animate frames and save as .gif
+animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
+```
+
+Die hier erstellte Grafik wird nicht weiter genutzt und betrachtet. Dies hat verschiedene Gründe. Zum Einen ist die Visualisierung aufgrund der Menge an Datenpunkten, die sich auf einem relativ kleinen Ausschnitt der Karte befinden zu unübersichtlich. Zum Anderen ist auch kein klares Fahrtenmuster erkennbar. Dies zum Teil aufgrund der Unübersichtlichkeit, aber auch, da fast alle Stationen im Stadtteil Manhattan liegen und die Fahrten recht gleichmäßig auf alle Stationen verteilt sind.
+
 ### heat map
 
 ```{r}
@@ -931,81 +1161,118 @@ basemap %>%
 
 Um die erste Forschungsfrage beantworten zu können, wird der Datensatz hourly_starts noch weiter angepasst, sowie ein weiterer Datensatz erstellt, der die stündlichen Starts nach den Bezirken (neighborhoods) gruppiert und mehrere Stationen zusammenfasst.
 
-Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach werden wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. 
+Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. Hiernach werden für die Spalten neighborhood und weekday Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+
+#Bike Daten in einen extra Data Frame laden und Datum und Stunde trennen
 df <- bike
 df <- df %>%
   mutate(start_date = as_date(starttime),
          start_hour = hour(starttime))
 
+#Bezirke für Stationen hinzufügen
 df <- df %>%
   left_join(points, by = c("start_station_name"="start_station_name",
                            "start_station_latitude"="start_station_latitude.x",
                            "start_station_longitude"="start_station_longitude.x"))
 
+#Fehlende Werte überprüfen
 apply(df, 2, function(x) sum(is.na(x)))
 
+#Überprüfen wo der Bezirk fehlt
 df[is.na(df$neighborhood),]
 
+#Teilweise fehlt der Bezirk für Station 160, manuell ersetzen, da bekannt
 df$neighborhood[df$start_station_id==160 & is.na(df$neighborhood)] <- "Murray Hill"
 df$boroughCode[df$start_station_id==160 & is.na(df$boroughCode)] <- 1
 df$borough[df$start_station_id==160 & is.na(df$borough)] <- "Manhattan"
 
+#Für Station 3240 kein Bezirk bekannt, fehlende Werte explizit machen
 df$neighborhood <- fct_explicit_na(df$neighborhood)
 df$boroughCode <- fct_explicit_na(df$boroughCode)
 df$borough <- fct_explicit_na(df$borough)
 
-
+#Nach Bezirk gruppieren und Nutzerzahlen aufsummieren
 hourly_starts_nh <- df %>%
   group_by(start_date, start_hour, neighborhood) %>%
   summarise(user_count = n()) %>%
   mutate(weekend = ifelse(wday(start_date, week_start = 1) == 6 | wday(start_date, week_start = 1) == 7, 1,0))
 
+#Variable für Wochentag einfügen
 hourly_starts_nh <- hourly_starts_nh %>%
   mutate(weekday = wday(start_date, abbr = F, label = T))
 
+#Variable für Feiertag einfügen
 hourly_starts_nh$holiday <- ifelse(isBizday(as.timeDate(hourly_starts_nh$start_date), holidayNYSE(2016))==FALSE,1,0)
 
+#Wetterdaten hinzufügen
 hourly_starts_nh <- hourly_starts_nh %>%
-  full_join(hourly_weather, by = c("start_date" = "date", "start_hour" = "hour"))
+  full_join(hourly_weather_16, by = c("start_date" = "date", "start_hour" = "hour"))
 
+#Fehlende Werte überprüfen
 apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
 hourly_starts_nh[is.na(hourly_starts_nh$neighborhood),] #vom 23.01.-26.01. keine fahrten
 
-hourly_starts_nh <- hourly_starts_nh[complete.cases(hourly_starts_nh[,3:7]),]#wetterdaten vom 23.-26.01 entfernen
+#Nicht genutzte Wetterdaten entfernen
+hourly_starts_nh <- hourly_starts_nh[complete.cases(hourly_starts_nh[,3:7]),]
 
-apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))#1585 stunden/neighborhoods fehlen werte->interpolieren
+#Fehlende Werte überprüfen und interpolieren
+apply(hourly_starts_nh, 2, function(x) sum(is.na(x))
+hourly_starts_nh[,8:10] <- na_interpolation(hourly_starts_nh[,8:10], option = "spline")
 
-hourly_starts_nh[,8:15] <- na_interpolation(hourly_starts_nh[,8:15], option = "spline")
-
+#Dummyvariablen erstellen
 hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
 
+#Namen der Dummys bearbeiten
+names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
+
+#Dummys effektkodieren
+hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
+
+#Daten speichern
+saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
 
 ```
+
 ```{r}
-library(glmnet)
-q1_nh <- hourly_starts_nh
-
-x <- as.matrix(q1_nh[,-3])
-y <- as.matrix(q1_nh[,3])
-
-
-#set lambdas
-lambdas <- 10^seq(2, -3, by = -.1)
-
-# Setting alpha = 1 implements lasso regression, cross validation for opt. lambda
-lasso_reg <- cv.glmnet(x, y, alpha = 1, lambda = lambdas, nfolds = 3)
-
-# Best 
-lambda_best <- lasso_reg$lambda.min 
-lambda_best
+hourly_starts_nh <- readRDS("Data/q1_starts_nh.RDS")
 ```
 
 
 ### split data
 
-### regression
+### Regression
+
+#### Stündliche Regression
+
+
+```{r}
+model <- as.formula(user_count ~ .)
+linreg <- lm(model, hourly_starts_nh)
+summary(linreg)
+```
+
+
+```{r}
+library(glmnet)
+
+x <- data.matrix(hourly_starts_nh[,-3])
+y <- as.matrix(hourly_starts_nh[,3])
+
+str(x)
+
+#set lambdas
+lambdas <- 10^seq(2, -3, by = -.1)
+
+# Setting alpha = 1 implements lasso regression, cross validation for opt. lambda
+lasso_reg <- cv.glmnet(x, y, alpha = 1, nfolds = 3)
+
+# Best 
+lambda_best <- lasso_reg$lambda.min 
+lambda_best
+
+```
 
 ### knn
 
@@ -1019,3 +1286,6 @@ lambda_best
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
 https://www.citibikenyc.com/system-data
 https://www.kaggle.com/meinertsen/new-york-city-taxi-trip-hourly-weather-data
+https://www1.ncdc.noaa.gov/pub/data/cdo/documentation/LCD_documentation.pdf
+https://www.ncdc.noaa.gov/cdo-web/confirmation
+https://www.ncdc.noaa.gov/cdo-web/datasets/LCD/stations/WBAN:94728/detail
