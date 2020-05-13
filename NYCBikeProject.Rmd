@@ -9,6 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 # Load Packages
@@ -1371,6 +1372,24 @@ q2_starts <- q2_starts %>%
 q2_starts_w <- left_join(q2_starts, weather, by = "date")
 ```
 
+Aggregation eines DAtensatzes mit Neighborhoods
+
+```{r}
+points1 <- points %>%
+  select(start_station_name, start_station_latitude.x, start_station_longitude.x, neighborhood)
+
+q2_starts_w <- left_join(q2_starts_w, points1, by = c("start_station_name"="start_station_name",
+                           "start_station_latitude.x"="start_station_latitude.x",
+                           "start_station_longitude.x"="start_station_longitude.x"))
+
+
+#Teilweise fehlt der Bezirk für Station 160, manuell ersetzen, da bekannt
+q2_starts_w$neighborhood[q2_starts_w$start_station_name=="E 37 St & Lexington Ave" & is.na(q2_starts_w$neighborhood)] <- "Murray Hill"
+
+#Für Station 3240 kein Bezirk bekannt, fehlende Werte explizit machen
+q2_starts_w$neighborhood <- fct_explicit_na(q2_starts_w$neighborhood)
+```
+
 
 Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Feature.
 
@@ -1378,7 +1397,8 @@ Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Featu
 
 #Variable für Wochentag einfügen
 q2_starts_w <- q2_starts_w %>%
-  mutate(weekday = wday(date, abbr = F, label = T))
+  mutate(weekday = wday(date, abbr = F, label = T, week_start = 1))
+q2_starts_w$weekday <- factor(q2_starts_w$weekday, ordered = FALSE)
 
 #Variable für Feiertag einfügen
 q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date), holidayNYSE(2016))==FALSE,1,0)
@@ -1396,23 +1416,115 @@ Nicht brauchbare Spalten entfernen.
 
 ```{r}
 
+
+
 q2_starts_w$male <- NULL
 q2_starts_w$woman <- NULL
 q2_starts_w$undefined <- NULL
+q2_starts_w$start_station_latitude.x <- NULL
+q2_starts_w$start_station_longitude.x <- NULL
+
+q2_starts_w2 <- q2_starts_w
+
+q2_starts_w$neighborhood <- NULL 
+
+q2_starts_w2_agg <- q2_starts_w2 %>%
+  group_by(date, neighborhood) %>%
+  summarise( anzahl = n(), avg_tripduration = mean(avg_tripduration), avg_age=mean(avr_age))
+
+
+
+q2_starts_w2_agg <- left_join(q2_starts_w2_agg, weather, by = "date")
+
+
+#Variable für Wochentag einfügen
+q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  mutate(weekday = wday(date, abbr = F, label = T, week_start = 1))
+q2_starts_w2_agg$weekday <- factor(q2_starts_w2_agg$weekday, ordered = FALSE)
+
+
+#Variable für Feiertag einfügen
+q2_starts_w2_agg$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w2_agg$date), holidayNYSE(2016))==FALSE,1,0)#
+
+
+
 
 ```
 
 
 
 ```{r}
-#Regression mit q2
+#Regression mit q2_starts_w
+options(max.print=450)
 model_q2 <- as.formula(anzahl ~ .)
 lin_reg_q2 <- lm(model_q2, q2_starts_w)
 summary(lin_reg_q2)
 ```
 
 
+```{r}
+#Regression mit q2_starts_w2_agg
+options(max.print=450)
+model_q2_w2_agg <- as.formula(anzahl ~ .)
+lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
+summary(lin_reg_q2_w2_agg)
+
+```
+
+
 ### Test Data
+
+```{r, eval=FALSE, echo=TRUE}
+feb2017 <- read_csv("Data/201702-citibike-tripdata.csv")
+may2017 <- read_csv("Data/201705-citibike-tripdata.csv")
+aug2017 <- read_csv("Data/201708-citibike-tripdata.csv")
+nov2017 <- read_csv("Data/201711-citibike-tripdata.csv")
+
+
+saveRDS(feb2017, "Data/feb2017.rds")
+saveRDS(may2017, "Data/may2017.rds")
+saveRDS(aug2017, "Data/aug2017.rds")
+saveRDS(nov2017, "Data/nov2017.rds")
+```
+
+
+```{r}
+test_feb2017 <- read_rds("Data/feb2017.rds")
+test_may2017 <- read_rds("Data/may2017.rds")
+test_aug2017 <- read_rds("Data/aug2017.rds")
+test_nov2017 <- read_rds("Data/nov2017.rds")
+
+names(test_feb2017) <- str_replace_all(names(test_feb2017), c(" " = "_"))
+names(test_may2017) <- str_replace_all(names(test_may2017), c(" " = "_"))
+names(test_aug2017) <- str_replace_all(names(test_aug2017), c(" " = "_"))
+names(test_nov2017) <- str_replace_all(names(test_nov2017), c(" " = "_"))
+
+
+test_feb2017 <- test_feb2017 %>%
+  rename(tripduration = Trip_Duration,
+         starttime = Start_Time,
+         stoptime = Stop_Time,
+         start_station_id = Start_Station_ID,
+         start_station_name = Start_Station_Name,
+         start_station_latitude = Start_Station_Latitude,
+         start_station_longitude = Start_Station_Longitude,
+         end_station_id = End_Station_ID,
+         end_station_name = End_Station_Name,
+         end_station_latitude = End_Station_Latitude,
+         end_station_longitude = End_Station_Longitude,
+         bikeid = Bike_ID,
+         usertype = User_Type,
+         birth_year = Birth_Year,
+         gender = Gender)
+
+
+apply(test_feb2017, 2, function(x) sum(is.na(x)))
+apply(test_may2017, 2, function(x) sum(is.na(x)))
+apply(test_aug2017, 2, function(x) sum(is.na(x)))
+apply(test_nov2017, 2, function(x) sum(is.na(x)))
+
+```
+
 
 
 ### Lineare Regression
@@ -1471,13 +1583,41 @@ Vorbereiten der des anderen DAtensatzes
 
 ```{r}
 #Dummyvariablen erstellen
-q2_starts_w_nn <- dummy_cols(q2_starts_w, c("weekday"), remove_first_dummy = T, remove_selected_columns = T)
+library(data.table)
+
+q2_starts_w_nn <- as.data.table(q2_starts_w)
+
+
+q2_starts_w_nn <- dummy_cols(q2_starts_w, c("weekday", "start_station_name"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(q2_starts_w_nn) <- str_replace_all(names(q2_starts_w_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-#hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
+#q2_starts_w_nn[,c(11:670)] <- effectcoding(q2_starts_w_nn[,c(11:670)])
+```
+
+Funktioniert nicht!
+
+
+Neue Variante mit neighborhoods.
+
+```{r}
+
+#Dummyvariablen erstellen
+library(data.table)
+
+q2_starts_w2_nn <- as.data.table(q2_starts_w2_agg)
+
+
+q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(q2_starts_w2_nn) <- str_replace_all(names(q2_starts_w2_nn), c(" " = "_"))
+
+#Dummys effektkodieren
+q2_starts_w2_nn[,c(11:283)] <- effectcoding(q2_starts_w2_nn[,c(11:283)])
+
 ```
 
 
