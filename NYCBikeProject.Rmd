@@ -1244,7 +1244,7 @@ basemap %>%
 
 Um die erste Forschungsfrage beantworten zu können, wird der Datensatz hourly_starts noch weiter angepasst, sowie ein weiterer Datensatz erstellt, der die stündlichen Starts nach den Bezirken (neighborhoods) gruppiert und mehrere Stationen zusammenfasst.
 
-Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. Hiernach werden für die Spalten neighborhood und weekday Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
+Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1304,15 +1304,6 @@ hourly_starts_nh <- hourly_starts_nh[complete.cases(hourly_starts_nh[,3:7]),]
 apply(hourly_starts_nh, 2, function(x) sum(is.na(x))
 hourly_starts_nh[,8:10] <- na_interpolation(hourly_starts_nh[,8:10], option = "spline")
 
-#Dummyvariablen erstellen
-hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
-
-#Namen der Dummys bearbeiten
-names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
-
-#Dummys effektkodieren
-hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
-
 #Daten speichern
 saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
 
@@ -1322,42 +1313,96 @@ saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
 hourly_starts_nh <- readRDS("Data/q1_starts_nh.RDS")
 ```
 
+Um stationsgenaue Vorhersagen zu treffen, wird der Datenssatz hourly_starts ebenfalls weiter aufbereitet. Wie zuvor werden die Variablen Wochentag und Feiertag eingefügt, sowie die Wetterdaten hinzugefügt.
 
-### split data
+```{r}
+#Variable für Wochentag einfügen
+hourly_starts <- hourly_starts %>%
+  mutate(weekday = wday(start_date, abbr = F, label = T))
 
-### Regression
+#Variable für Feiertag einfügen
+hourly_starts$holiday <- ifelse(isBizday(as.timeDate(hourly_starts$start_date), holidayNYSE(2016))==FALSE,1,0)
+
+#Wetterdaten hinzufügen
+hourly_starts <- hourly_starts %>%
+  full_join(hourly_weather_16, by = c("start_date" = "date", "start_hour" = "hour"))
+
+#Fehlende Werte überprüfen
+apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
+hourly_starts[is.na(hourly_starts$start_station_name),] #vom 23.01.-26.01. keine fahrten
+
+#Nicht mehr benötigte Variablen entfernen
+hourly_starts$start_station_id <- NULL
+hourly_starts$start_station_latitude <- NULL
+hourly_starts$start_station_longitude <- NULL
+hourly_starts$avg_age <- NULL
+hourly_starts$avg_tripduration <- NULL
+hourly_starts$male_user_count <- NULL
+hourly_starts$female_user_count <- NULL
+hourly_starts$undefined_user_count <- NULL
+hourly_starts$subscriber_count <- NULL
+hourly_starts$customer_count <- NULL
+
+#Nicht genutzte Wetterdaten entfernen
+hourly_starts <- hourly_starts[complete.cases(hourly_starts[,3:7]),]
+
+#Fehlende Werte überprüfen und interpolieren
+apply(hourly_starts, 2, function(x) sum(is.na(x)))
+hourly_starts[,8:10] <- na_interpolation(hourly_starts[,8:10], option = "spline")
+```
+
+
+### Test Data
+
+
+### Lineare Regression
+
+Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird eine lineare Regression als Benchmark durchgeführt. Es werden für die beiden Forschungsfragen lineare Regressionsmodelle erstellt, die mit den Testdaten eine Vorhersage für die Nutzeranzahl treffen. Der Fehler, der hierbei gemacht wird wird in Form des ...(mse?) gemessen und mit dem des KNN verglichen.
 
 #### Stündliche Regression
 
+Für die stündlichen Nutzerdaten werden zwei Regressionen durchgeführt. Dies ist der Fall, da sich die Granularität der beiden Datensätze voneinander unterscheidet. Für einen Datensatz sollen die Nutzerzahlen je Bezirk bestimmt werden, für den anderen Datensatz die Nutzerzahlen je Station.
 
 ```{r}
+#Regression mit Bezirken
 model <- as.formula(user_count ~ .)
-linreg <- lm(model, hourly_starts_nh)
+lin_reg_nh <- lm(model, hourly_starts_nh)
 summary(linreg)
-```
 
+#Bestimmen welche Variablen signifikant sind
+test_sig <- summary(lin_reg_nh)$coefficients[-1,4] < 0.05
+#Nur signifikante Behalten
+sig_x <- names(test_sig)[test_sig == TRUE] 
+#Model mit nur signifikanten Variablen erstellen FEHLER unerwartetes symbol
+sig.model <- as.formula(paste("user_count ~", paste(sig_x, collapse = " + ")))
+
+
+```
 
 ```{r}
-library(glmnet)
-
-x <- data.matrix(hourly_starts_nh[,-3])
-y <- as.matrix(hourly_starts_nh[,3])
-
-str(x)
-
-#set lambdas
-lambdas <- 10^seq(2, -3, by = -.1)
-
-# Setting alpha = 1 implements lasso regression, cross validation for opt. lambda
-lasso_reg <- cv.glmnet(x, y, alpha = 1, nfolds = 3)
-
-# Best 
-lambda_best <- lasso_reg$lambda.min 
-lambda_best
-
+#Regression mit Stations: zu viele Variablen?
+model <- as.formula(user_count ~ .)
+lin_reg_stations <- lm(model, hourly_starts)
 ```
 
-### knn
+### KNN
+
+#### Stündliche Daten aufbereiten
+
+Zunächst wird der Datensatz auf Basis der Bezirke betrachtet.
+Um ein künstlihes neuornales Netz zu erhalten, das fehlerfrei läuft, muss der Datensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood und weekday werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
+
+```{r}
+#Dummyvariablen erstellen
+hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
+
+#Dummys effektkodieren
+hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
+```
+
 
 #### cross validation
 
