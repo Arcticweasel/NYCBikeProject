@@ -970,7 +970,7 @@ animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
 
 Die hier erstellte Grafik wird nicht weiter genutzt und betrachtet. Dies hat verschiedene Gründe. Zum Einen ist die Visualisierung aufgrund der Menge an Datenpunkten, die sich auf einem relativ kleinen Ausschnitt der Karte befinden zu unübersichtlich. Zum Anderen ist auch kein klares Fahrtenmuster erkennbar. Dies zum Teil aufgrund der Unübersichtlichkeit, aber auch, da fast alle Stationen im Stadtteil Manhattan liegen und die Fahrten recht gleichmäßig auf alle Stationen verteilt sind.
 
-### heat map
+### heat map / choropleth map / interactive map / animierte map
 
 Als erstes laden wir einige Plugins zum visualisieren von Maps und Geodaten
 
@@ -1235,10 +1235,11 @@ basemap %>%
   setView(-73.98, 40.75, zoom = 13)
 ```
 
+```{r}
+rm(points_spdf, points_by_neighborhood, stations, newTest_agg1, matches, nyc_neighborhoods, nyc_neighborhoods_df)
+```
 
 
-
-### choropleth map
 
 ## Analytics
 
@@ -1351,6 +1352,59 @@ apply(hourly_starts, 2, function(x) sum(is.na(x)))
 hourly_starts[,8:10] <- na_interpolation(hourly_starts[,8:10], option = "spline")
 ```
 
+### Analytics2
+
+Als erstes den Datensatz mit dem Wetter joinen. Dazu bennen wir die Datumsspalte gleich in beiden Datenframes.
+
+```{r}
+q2_starts <- q2_starts %>%
+  rename(
+    date = date_start
+  )
+
+q2_starts_w <- left_join(q2_starts, weather, by = "date")
+```
+
+
+Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Feature.
+
+```{r}
+
+#Variable für Wochentag einfügen
+q2_starts_w <- q2_starts_w %>%
+  mutate(weekday = wday(date, abbr = F, label = T))
+
+#Variable für Feiertag einfügen
+q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date), holidayNYSE(2016))==FALSE,1,0)
+```
+
+
+Prüfen auf fehlende Werte.
+
+```{r}
+apply(q2_starts_w, 2, function(x) sum(is.na(x)))
+```
+
+
+Nicht brauchbare Spalten entfernen.
+
+```{r}
+
+q2_starts_w$male <- NULL
+q2_starts_w$woman <- NULL
+q2_starts_w$undefined <- NULL
+
+```
+
+
+
+```{r}
+#Regression mit q2
+model_q2 <- as.formula(anzahl ~ .)
+lin_reg_q2 <- lm(model, q2_starts_w)
+summary(lin_reg_q2)
+```
+
 
 ### Test Data
 
@@ -1402,6 +1456,21 @@ names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_")
 #Dummys effektkodieren
 hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
 ```
+
+
+Vorbereiten der des anderen DAtensatzes
+
+```{r}
+#Dummyvariablen erstellen
+q2_starts_w_nn <- dummy_cols(q2_starts_w, c("weekday"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(q2_starts_w_nn) <- str_replace_all(names(q2_starts_w_nn), c(" " = "_"))
+
+#Dummys effektkodieren
+#hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
+```
+
 
 
 #### cross validation
