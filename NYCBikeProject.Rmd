@@ -24,7 +24,7 @@ source("Routinen/ANNUtils.r")
 ```
 
 
-# NYC bike project
+# NYC Bike Project
 
 ## Überblick
 
@@ -34,15 +34,25 @@ In diesem Anwendungsprojekt werden Daten der City of New York bearbeitet, visual
 
 Die Daten zum Bikesharing sind folgendermaßen strukturiert. Jede Zeile des ursprünglichen Datensatzes repräsentiert eine Fahrt mit einem Fahrrad der Bikesharing Flotte. Zu jeder Fahrt ist die Dauer der Leihe, der Start- und Endzeitpunkt, sowie die Start- und Endstation festgehalten. Außerdem ist die Indentifikationsnummer des jeweiligen Fahrrades vorhanden. Des Weiteren sind Kundeninformationen festgehalten. Das Geschlecht und Geburtsjahr, sowie der Nutzertyp. Hier wird zwischen Customer und Subscriber unterschieden. Subscriber haben ein jährliches Abonnement abgeschlossen, wohingegen Customer einen Ein- oder Drei-Tages-Pass erworben haben.
 
-Die Wetterdaten halten die täglichen Maximal- und Minimaltemperaturen fest, sowie die Tagesdurchschnittstemperatur. Des Weiteren geben Sie Auskunft über den gefallenen Regen, sowie den neuen Schneefall und die Tiefe der aktuellen Schneedecke.
+Die täglichen Wetterdaten halten die täglichen Maximal- und Minimaltemperaturen fest, sowie die Tagesdurchschnittstemperatur. Des Weiteren geben Sie Auskunft über den gefallenen Regen, sowie den neuen Schneefall und die Tiefe der aktuellen Schneedecke.
+
+Die stündlichen Wetterdaten geben Auskunft über die Temperatur, die Windgeschwindigkeit, sowie den gefallenen Regen.
 
 ## Forschungsfragen
 
 Nach einigen Diskussionen und Analysen der Daten haben sich zwei interessante Forschungsfragen ergeben.
 
-1. Können die Nutzerzahlen pro Station und Stunde zuverlässig vorrausgesagt werden?   und
+1. Können die Nutzerzahlen pro Station und Stunde zuverlässig vorausgesagt werden?   und
 
-2. Können die Nutzerzahlen pro Tag in Abhängigkeit zum Wetter vorrausgesagt werden?
+2. Können die Nutzerzahlen pro Station und Tag zuverlässig vorausgesagt werden? 
+
+Im späteren Verlauf des Projektes haben sich aufgrund der Datenmenge Probleme in den Analysen ergeben. Aufgrunddessen werden die Forschungsfragen wie folgt bearbeitet:
+
+1. Können die Nutzerzahlen pro Bezirk und Stunde zuverlässig vorausgesagt werden? und
+
+2. Können die Nutzerzahlen pro Bezirk und Tag zuverlässig vorausgesagt werden?
+
+Durch die Aggregation auf Bezirksebene verringert sich die Anzahl an Variablen erheblich und alle Analysen können problemlos durchgeführt werden.
 
 ## Daten Laden
 
@@ -530,7 +540,9 @@ hourly_weather_17 <- read_rds("Data/hourly_weather_2017.RDS")
 
 Im weiteren Verlauf dieser Arbeit wird mit den Datensätzen hourly_weather_16 und hourly_weather_2017 gearbeitet.
 
-### Aggregate Data
+### Daten Aggregieren
+
+#### Stündliche Daten
 
  Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
@@ -667,6 +679,8 @@ hourly_starts <- readRDS("Data/bike_q1_starts.rds")
 hourly_stops <- readRDS("Data/bike_q1_stops.rds")
 
 ```
+
+#### Tägliche Daten
 
  Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
  
@@ -1241,14 +1255,15 @@ rm(points_spdf, points_by_neighborhood, stations, newTest_agg1, matches, nyc_nei
 ```
 
 
-
 ## Analytics
 
-### Hourly Data
+### Stündliche Daten
 
 Um die erste Forschungsfrage beantworten zu können, wird der Datensatz hourly_starts noch weiter angepasst, sowie ein weiterer Datensatz erstellt, der die stündlichen Starts nach den Bezirken (neighborhoods) gruppiert und mehrere Stationen zusammenfasst.
 
-Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. Die zuvor eingefügte Variable Wochenende wird wieder aus dem Datensatz entfernt, da das Muster, dass am Wochenende wesentlich weniger Nutzer die Räder fahren bereits über die Variable Weekday abgedeckt wird.
+Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather_16, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. 
+
+Die zuvor eingefügte Variable Wochenende wird wieder aus dem Datensatz entfernt, da das Muster, dass am Wochenende wesentlich weniger Nutzer die Räder fahren bereits über die Variable Weekday abgedeckt wird. Dadurch wird dem Problem der Kollinearität vorgebeugt. Zu guter letzt wird der Datentyp der Spalte neighborhood von factor zu character konvertiert, da so nicht genutzte Bezirke, die als level des factors vorhanden waren, nicht länger gespeichert werden.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1310,6 +1325,9 @@ hourly_starts_nh[,8:10] <- na_interpolation(hourly_starts_nh[,8:10], option = "s
 #Variable Weekend entfernen, da Wochentage für Betrachtung ausreichen
 hourly_starts_nh$weekend <- NULL
 
+#Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
+hourly_starts_nh$neighborhood <- as.character(hourly_starts_nh$neighborhood)
+
 #Daten speichern
 saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
 
@@ -1321,7 +1339,7 @@ hourly_starts_nh <- readRDS("Data/q1_starts_nh.RDS")
 
 Um stationsgenaue Vorhersagen zu treffen, wird der Datenssatz hourly_starts ebenfalls weiter aufbereitet. Wie zuvor werden die Variablen Wochentag und Feiertag eingefügt, sowie die Wetterdaten hinzugefügt.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 #Variable für Wochentag einfügen
 hourly_starts <- hourly_starts %>%
   mutate(weekday = wday(start_date, abbr = F, label = T, week_start = 1))
@@ -1359,7 +1377,9 @@ apply(hourly_starts, 2, function(x) sum(is.na(x)))
 hourly_starts[,7:9] <- na_interpolation(hourly_starts[,7:9], option = "spline")
 ```
 
-### Analytics2
+Dieser Datensatz wird in den weiteren Analysen nicht betrachtet. Alle weiteren Berechnungen werden mit dem Datensatz hourly_starts_nh durchgeführt, der die Fahrerzahlen auf Neighborhood-Ebene aggregiert. Dies hat den Grund, dass der obige Datensatz die Fahrerzahlen auf Stationsebene aggregiert und nach der Dummyfizierung so groß ist, dass die Rechenleistung nicht ausreicht.
+
+### Tägliche Daten
 
 Als erstes den Datensatz mit dem Wetter joinen. Dazu bennen wir die Datumsspalte gleich in beiden Datenframes.
 
@@ -1474,6 +1494,8 @@ summary(lin_reg_q2_w2_agg)
 
 ### Test Data
 
+Um die Vorhersagegenauigkeit der nachfolgenden Modelle zu testen, werden Testdaten benötigt. Da alle Modelle mit den Daten des gesamten Jahres 2016 lernen, soll mit Daten aus dem Jahr 2017 getestet werden. Um alle Jahreszeiten angemessen zu betrachten, werden die Monate Februar, Mai, August und November ausgewählt. Um Speicherplatz zu sparen, werden diese im Format .RDS gespeichert.
+
 ```{r, eval=FALSE, echo=TRUE}
 feb2017 <- read_csv("Data/201702-citibike-tripdata.csv")
 may2017 <- read_csv("Data/201705-citibike-tripdata.csv")
@@ -1487,6 +1509,7 @@ saveRDS(aug2017, "Data/aug2017.rds")
 saveRDS(nov2017, "Data/nov2017.rds")
 ```
 
+Ebenso wie die Daten für das Jahr 2016, müssen auch die Daten für das Jahr 2017 bearbeitet werden, bevor sie in die Analysen einfliessen können. Zunächst werden Leerzeichen in den Spaltennamen durch Unterstriche ersetzt, um Probleme beim Ansprechen der Spalten zu vermeiden. Danach werden die Spaltennamen in ein gemeinsames Format überführt.
 
 ```{r}
 test_feb2017 <- read_rds("Data/feb2017.rds")
@@ -1525,11 +1548,17 @@ apply(test_nov2017, 2, function(x) sum(is.na(x)))
 
 ```
 
+Da zur Beantwortung der beiden Forschungsfragen unterschiedliche Anforderungen an die Testdaten gestellt werden, werden diese einmal für die tägliche und einmal für die stündliche Analyse aufbereitet.
+
+#### Aufbereitung Für Stündliche Analyse
+
+
+#### Aufbereitung Für Tägliche Analyse
 
 
 ### Lineare Regression
 
-Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird eine lineare Regression als Benchmark durchgeführt. Es werden für die beiden Forschungsfragen lineare Regressionsmodelle erstellt, die mit den Testdaten eine Vorhersage für die Nutzeranzahl treffen. Der Fehler, der hierbei gemacht wird wird in Form des **M**ean **S**quared **E**rror (MSE) gemessen und mit dem des KNN verglichen.
+Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird eine lineare Regression als Benchmark durchgeführt. Es werden für die beiden Forschungsfragen lineare Regressionsmodelle erstellt, die mit den Testdaten eine Vorhersage für die Nutzeranzahl treffen. Der Fehler, der hierbei gemacht wird, wird in Form des **M**ean **S**quared **E**rror (MSE) gemessen und mit dem des KNN verglichen.
 
 #### Stündliche Regression
 
@@ -1549,16 +1578,22 @@ View(sig_x)
 sig_x <- str_replace_all(sig_x, c(" " = "_"))
 sig_x <- str_replace_all(sig_x, c("-" = "_"))
 #Model mit nur signifikanten Variablen erstellen FEHLER unerwartetes symbol
-sig.model <- as.formula(paste("user_count", paste(sig_x, collapse = " + "), sep = "~"))
+sig.model <- formula(paste("user_count ~ ", paste(sig_x, collapse = " + ")))
+sig.model <- formula(sig.model)
 
 
 ```
 
-```{r}
-#Regression mit Stations: zu viele Variablen? Kann mit 12,7 GB vektor nicht allozieren
+Nachfolgend wir eine lineare Regression auf Stationsebene durchgeführt.
+
+```{r, eval=FALSE, echo=TRUE}
+
+#Regression mit Stations
 model_q1 <- as.formula(user_count ~ .)
 lin_reg_q1 <- lm(model_q1, hourly_starts)
 ```
+
+Da der Datensatz in bearbeiteter Form mehrere Gigabyte groß ist, kann keine Analyse durchgeführt werden. Nachfolgend wird ausschließlich der Datebsatz auf Bezirksebene betrachtet.
 
 ### KNN
 
@@ -1575,10 +1610,11 @@ hourly_starts_nh <- dummy_columns(hourly_starts_nh, c("neighborhood", "weekday")
 names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
 
 #Dummys effektkodieren
-hourly_starts_nh[,c(4:5, 9:280)] <- effectcoding(hourly_starts_nh[,c(4:5, 9:280)])
+hourly_starts_nh[,c(4, 8:61)] <- effectcoding(hourly_starts_nh[,c(4, 8:61)])
 ```
 
 #### Tägliche Daten Aufbereiten
+
 Vorbereiten der des anderen DAtensatzes
 
 ```{r}
