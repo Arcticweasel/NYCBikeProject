@@ -1512,17 +1512,19 @@ saveRDS(nov2017, "Data/nov2017.rds")
 Ebenso wie die Daten für das Jahr 2016, müssen auch die Daten für das Jahr 2017 bearbeitet werden, bevor sie in die Analysen einfliessen können. Zunächst werden Leerzeichen in den Spaltennamen durch Unterstriche ersetzt, um Probleme beim Ansprechen der Spalten zu vermeiden. Danach werden die Spaltennamen in ein gemeinsames Format überführt.
 
 ```{r}
+#Datensätze laden
 test_feb2017 <- read_rds("Data/feb2017.rds")
 test_may2017 <- read_rds("Data/may2017.rds")
 test_aug2017 <- read_rds("Data/aug2017.rds")
 test_nov2017 <- read_rds("Data/nov2017.rds")
 
+#Leerzeichen in Spaltennamen ersetzten
 names(test_feb2017) <- str_replace_all(names(test_feb2017), c(" " = "_"))
 names(test_may2017) <- str_replace_all(names(test_may2017), c(" " = "_"))
 names(test_aug2017) <- str_replace_all(names(test_aug2017), c(" " = "_"))
 names(test_nov2017) <- str_replace_all(names(test_nov2017), c(" " = "_"))
 
-
+#Spaltennamen an Rest des Datensatzes anpassen
 test_feb2017 <- test_feb2017 %>%
   rename(tripduration = Trip_Duration,
          starttime = Start_Time,
@@ -1540,17 +1542,102 @@ test_feb2017 <- test_feb2017 %>%
          birth_year = Birth_Year,
          gender = Gender)
 
+#Einen Testdatensatz erstellen
+test_data <- rbind(test_feb2017, test_may2017, test_aug2017, test_nov2017)
 
-apply(test_feb2017, 2, function(x) sum(is.na(x)))
-apply(test_may2017, 2, function(x) sum(is.na(x)))
-apply(test_aug2017, 2, function(x) sum(is.na(x)))
-apply(test_nov2017, 2, function(x) sum(is.na(x)))
+#Nicht mehr benötigte Objekte entfernen
+rm(test_feb2017, test_aug2017, test_may2017, test_nov2017)
+```
+
+In den Testdaten aus dem Jahr 2017 befinden sich einige Stationen mehr, als noch in 2016. Aufgrunddessen wird ein Datensatz erstellt, der die Stationen für das Jahr 2017 enthält, sowie die dazugehörigen Bezirke.
+
+```{r}
+#Stationen für 2017 in einem eigenen Datensatz speichern
+stations_2017 <- unique(c(test_data[,5], test_data[,6], test_data[,7]))
+stations_2017 <- as.data.frame(stations_2017)
+stations_2017 <- stations_2017 %>% distinct()
+names(stations_2017) <- c("start_station_name", "start_station_latitude", "start_station_longitude")
+
+#Bezirke laden
+nyc_neighborhoods <- readRDS("Data/GEOJSON.rds")
+
+#Stationen für 2017 bearbeiten
+stations_2017$start_station_name <- as.factor(stations_2017$start_station_name)
+
+#stations_2017 mit neighborhoods verbinden
+points_spdf <- stations_2017
+coordinates(points_spdf) <- ~start_station_longitude + start_station_latitude
+proj4string(points_spdf) <- proj4string(nyc_neighborhoods)
+matches <- over(points_spdf, nyc_neighborhoods)
+stations_2017 <- cbind(stations_2017, matches)
+
+#Nur die Spalten behalten, die weiterhin wichtig sind
+stations_2017 <- stations_2017 %>%
+  select(start_station_name, start_station_latitude, start_station_longitude, neighborhood)
+
+#Nicht mehr benötige Objekte entfernen
+rm(nyc_neighborhoods, points_spdf, matches)
 
 ```
 
 Da zur Beantwortung der beiden Forschungsfragen unterschiedliche Anforderungen an die Testdaten gestellt werden, werden diese einmal für die tägliche und einmal für die stündliche Analyse aufbereitet.
 
 #### Aufbereitung Für Stündliche Analyse
+
+Für die stündliche Analyse werden die Daten wie folgt aufbereitet. Wie zuvor beim Trainingsdatensatz wird die Spalte starttime in die zwei Spalten Datum und Stunde aufgesplittet. Da eine Betrachtung auf Bezirkseben erfolgt, werden die Bezirke zu dem Datensatz hinzugefügt. Für zwei Stationen ist keine Zuordnung zu einem Bezirk möglich, sodass die fehlenden Werte in explizite fehlende Werte umgewandelt werden. Dies hat zur Folge, dass der Bezirk dieser Stationen "Missing" benannt wird. Wie auch die Trainingsdaten werden die Testdaten nach dem Bezirk, dem Datum und der Stunde gruppiert, um die jeweiligen Nutzerzahlen aufsummieren zu können. Die Variablen, die die Ankunftsstationen betreffen, sowie die Nutzerdaten, wie z.B. Alter, Geschlecht und Fahrtdauer, werden nicht weiter betrachtet. Sie werden nicht weiter in die Analyse einfließen, da es das Ziel ist zukünftige Fahrten zu prognostizieren. Es ist dann noch nicht bekannt welches Alter die Fahrer haben werden, wie lang sie fahren oder welches Geschlecht sie haben. Es werden ebenfalls Variablen für den Wochentag und die Feiertage eingefügt, sowie Wetterdaten angefügt.
+
+```{r, eval=FALSE, echo=TRUE}
+#Einen Testdatensatz erstellen
+hourly_test <- test_data
+
+#Datum und Stunde trennen
+hourly_test <- hourly_test %>%
+  mutate(start_date = as_date(starttime),
+         start_hour = hour(starttime))
+
+#Bezirke für Stationen hinzufügen
+hourly_test <- hourly_test %>%
+  left_join(stations_2017, by = c("start_station_name"="start_station_name",
+                                  "start_station_latitude"="start_station_latitude",
+                                  "start_station_longitude"="start_station_longitude"))
+
+#Fehlende Werte überprüfen
+apply(hourly_test, 2, function(x) sum(is.na(x)))
+
+#Überprüfen wo der Bezirk fehlt
+hourly_test[is.na(hourly_test$neighborhood),]
+
+#Der Bezirk von zwei Stationen ist nicht bekannt, fehlende Werte explizit machen
+hourly_test$neighborhood <- fct_explicit_na(hourly_test$neighborhood)
+
+#Nach Bezirk gruppieren und Nutzerzahlen aufsummieren
+hourly_test <- hourly_test %>%
+  group_by(start_date, start_hour, neighborhood) %>%
+  summarise(user_count = n()) %>%
+  mutate(weekday = wday(start_date, abbr = F, label = T, week_start = 1),
+         holiday = ifelse(isBizday(as.timeDate(start_date), holidayNYSE(2017))==FALSE,1,0),)
+
+#Variable für Wochentag als ungeordneten Faktor speichern
+hourly_test$weekday <- factor(hourly_test$weekday, ordered = FALSE)
+
+#Wetterdaten hinzufügen
+hourly_test <- hourly_test %>%
+  left_join(hourly_weather_17, by = c("start_date" = "date", "start_hour" = "hour"))
+
+#Fehlende Werte überprüfen
+apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
+
+#Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
+hourly_test$neighborhood <- as.character(hourly_test$neighborhood)
+
+#Als .RDS speichern
+saveRDS(hourly_test, "Data/q1_starts_test.RDS")
+
+```
+
+```{r}
+hourly_test <- read_rds("Data/q1_starts_test.RDS")
+```
 
 
 #### Aufbereitung Für Tägliche Analyse
@@ -1564,23 +1651,32 @@ Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird ei
 
 Für die stündlichen Nutzerdaten werden zwei Regressionen durchgeführt. Dies ist der Fall, da sich die Granularität der beiden Datensätze voneinander unterscheidet. Für einen Datensatz sollen die Nutzerzahlen je Bezirk bestimmt werden, für den anderen Datensatz die Nutzerzahlen je Station.
 
+In einem ersten Schritt wird eine lineare Regression auf Bezirksebene durchgeführt.
+
 ```{r}
 #Regression mit Bezirken
 model_q1_nh <- as.formula(user_count ~ .)
 lin_reg_nh <- lm(model_q1_nh, hourly_starts_nh)
 summary(lin_reg_nh)
+anova(lin_reg_nh)
 
+```
+
+Die Anova deutet darauf hin, dass der Einfluss aller Variablen auf die Anzahl an Radfahrern statistisch signifikant ist, da der p-Wert äußerst gering ist. Die Funktion lm() hat zur Durchführung der Regression Dummyvariablen für die Variablen neighborhood, den Bezirk, und weekday, den Wochentag, erstellt. Sieht man sich die genaue Zusammenfassung des Modells an, wird sichtbar, dass der Einfluss zweier Bezirke statistisch nicht signifikant ist, d.h. zufällig ist. Sie werden dennoch nicht aus dem Modell entfernt, da sich sonst ein unvollständiges Bild der Situation ergeben würde, denn in diesen Bezirken gibt es auch Leihstationen, die genutzt werden. Sieht man jedoch auf den Wert für R-Quadrat, der sich auf 0.3946 beläuft, wird klar, dass das Modell die Situation nicht in ihrer Vollständigkeit erfassen kann. Dieser Wert ist sehr niedrig und sagt aus, dass nur 39.46% der Varianz in den Daten durch dieses Regressionsmodell erklärt werden können. Wirft man einen Blick auf die Visualisierungen im Kapitel **Basic Visualizations** wird klar weshalb. Die lineare Regression kann nur in eine Richtung vorhersagen treffen. Z.B. Wenn sich x um 1 erhöht/verringert, erhöht/verringert sich y um z. Es ist jedoch zu sehen, dass die Zusammenhänge in den Daten nicht linearer Natur sind, denn wenn die Temperatur eine bestimmte Marke überschreitet fahren weniger Menschen mit dem Rad. Das Selbe lässt sich bei der Uhrzeit beobachten. Morgens fahren viele Menschen Rad, über Tag weniger und am Nachmittag wieder mehr, bis es in der Nacht wieder weniger wird. Es ist hier also wenig verwunderlich, dass ein lineares Modell den Einfluss der einzelnen Variablen nicht exakt wiedergibt.
+
+```{r}
 #Bestimmen welche Variablen signifikant sind
 test_sig <- summary(lin_reg_nh)$coefficients[-1,4] < 0.05
+
 #Nur signifikante Behalten
 sig_x <- names(test_sig)[test_sig == TRUE] 
 View(sig_x)
 sig_x <- str_replace_all(sig_x, c(" " = "_"))
 sig_x <- str_replace_all(sig_x, c("-" = "_"))
-#Model mit nur signifikanten Variablen erstellen FEHLER unerwartetes symbol
-sig.model <- formula(paste("user_count ~ ", paste(sig_x, collapse = " + ")))
-sig.model <- formula(sig.model)
+sig_x <- str_replace_all(sig_x, c("'" = ""))
 
+#Model mit nur signifikanten Variablen erstellen
+sig.model <- as.formula(paste("user_count", paste(sig_x, collapse = " + "), sep = " ~ "))
 
 ```
 
@@ -1595,22 +1691,27 @@ lin_reg_q1 <- lm(model_q1, hourly_starts)
 
 Da der Datensatz in bearbeiteter Form mehrere Gigabyte groß ist, kann keine Analyse durchgeführt werden. Nachfolgend wird ausschließlich der Datebsatz auf Bezirksebene betrachtet.
 
+#### Tägliche Regression
+
 ### KNN
 
 #### Stündliche Daten Aufbereiten
 
-Zunächst wird der Datensatz auf Basis der Bezirke betrachtet.
-Um ein künstlihes neuornales Netz zu erhalten, das fehlerfrei läuft, muss der Datensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood und weekday werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
+Um ein künstliches neuornales Netz zu erhalten, das fehlerfrei läuft, müssen der Trainings- und Testdatensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood und weekday werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
 
 ```{r}
 #Dummyvariablen erstellen
 hourly_starts_nh <- dummy_columns(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
+hourly_test <- dummy_cols(hourly_test, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
+names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 
 #Dummys effektkodieren
 hourly_starts_nh[,c(4, 8:61)] <- effectcoding(hourly_starts_nh[,c(4, 8:61)])
+hourly_test[,c(4, 8:68)] <- effectcoding(hourly_test[,c(4, 8:68)])
+
 ```
 
 #### Tägliche Daten Aufbereiten
