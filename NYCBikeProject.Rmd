@@ -1413,7 +1413,7 @@ q2_starts_w$neighborhood <- fct_explicit_na(q2_starts_w$neighborhood)
 
 Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Feature.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 #Variable für Wochentag einfügen
 q2_starts_w <- q2_starts_w %>%
@@ -1427,14 +1427,14 @@ q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date), holidayNYS
 
 Prüfen auf fehlende Werte.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 apply(q2_starts_w, 2, function(x) sum(is.na(x)))
 ```
 
 
 Nicht brauchbare Spalten entfernen.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 
 
@@ -1466,9 +1466,22 @@ q2_starts_w2_agg$weekday <- factor(q2_starts_w2_agg$weekday, ordered = FALSE)
 #Variable für Feiertag einfügen
 q2_starts_w2_agg$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w2_agg$date), holidayNYSE(2016))==FALSE,1,0)#
 
+#Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
+q2_starts_w2_agg$neighborhood <- as.character(q2_starts_w2_agg$neighborhood)
 
+# Remove environment
 
+rm(q2_starts_w, q2_starts)
 
+# Save Data
+saveRDS(q2_starts_w2_agg, "Data/q2_starts_w2_agg.RDS")
+
+```
+
+ Load Data
+
+```{r}
+q2_starts_w2_agg <- read_rds("Data/q2_starts_w2_agg.RDS")
 ```
 
 
@@ -1643,6 +1656,114 @@ hourly_test <- read_rds("Data/q1_starts_test.RDS")
 #### Aufbereitung Für Tägliche Analyse
 
 
+```{r, eval=FALSE, echo=TRUE}
+# Dataframe für aggregierte TEsdaten erstellen
+
+test_data_q2 <- test_data
+
+# Nicht benötigte Columns entfernen
+
+test_data_q2$gender <- NULL
+test_data_q2$usertype <- NULL
+
+
+#Datum trennen
+test_data_q2 <- test_data_q2 %>%
+  mutate(start_date = as_date(starttime))
+
+# stations 2017 umwandeln
+
+stations_2017_test <- stations_2017
+stations_2017_test$start_station_name <- as.character(stations_2017_test$start_station_name)
+stations_2017_test$neighborhood <- as.character(stations_2017_test$neighborhood)
+
+#Bezirke für Stationen hinzufügen
+
+test_data_q2_test <- test_data_q2 %>%
+  left_join(stations_2017, by = c("start_station_name"="start_station_name",
+                                  "start_station_latitude"="start_station_latitude",
+                                  "start_station_longitude"="start_station_longitude"))
+
+
+test_data_q2 <- test_data_q2 %>%
+  left_join(stations_2017_test, by = c("start_station_name"="start_station_name",
+                                  "start_station_latitude"="start_station_latitude",
+                                  "start_station_longitude"="start_station_longitude"))
+
+
+
+# Points1 benutzen damit man nur die Stations kriegt die auch in den Trainingsdaten vorhanden sind
+
+'points1_test <- points1
+points1_test$start_station_name <- as.character(points1_test$start_station_name)
+points1_test$neighborhood <- as.character(points1_test$neighborhood)
+
+
+points1_test <- points1_test %>%
+  rename(start_station_latitude = start_station_latitude.x,
+         start_station_longitude = start_station_longitude.x)
+
+
+#Bezirke für Stationen hinzufügen
+test_data_q2 <- test_data_q2 %>%
+  left_join(points1_test, by = c("start_station_name"="start_station_name",
+                                  "start_station_latitude"="start_station_latitude",
+                                  "start_station_longitude"="start_station_longitude"))'
+
+#Fehlende Werte überprüfen
+#apply(test_data_q2, 2, function(x) sum(is.na(x)))
+
+#Überprüfen wo der Bezirk fehlt
+test_data_q2[is.na(test_data_q2$neighborhood),]
+
+#Der Bezirk von zwei Stationen ist nicht bekannt, fehlende Werte explizit machen
+test_data_q2$neighborhood <- fct_explicit_na(test_data_q2$neighborhood)
+
+
+
+
+#Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
+test_data_q2$neighborhood <- as.character(test_data_q2$neighborhood)
+
+
+test_data_q2$birth_year <- as.numeric(test_data_q2$birth_year)
+
+# Löschen der fehlenden Werte mit Birthyear
+
+test_data_q2 <- na.omit(test_data_q2)
+
+#Nach Bezirk gruppieren und Nutzerzahlen aufsummieren
+test_data_q2 <- test_data_q2 %>%
+  group_by(start_date, neighborhood) %>%
+  summarise(anzahl = n(), avg_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration)) %>%
+  mutate(weekday = wday(start_date, abbr = F, label = T, week_start = 1),
+         holiday = ifelse(isBizday(as.timeDate(start_date), holidayNYSE(2017))==FALSE,1,0),)
+
+#Fehlende Werte überprüfen
+apply(test_data_q2, 2, function(x) sum(is.na(x)))
+
+#Wetter hinzufügen
+
+test_data_q2 <- left_join(test_data_q2, weather_2017, by = c("start_date" = "date"))
+
+# Columns wie bei den Trainingsdaten anordnen
+
+test_data_q2 <- test_data_q2[, c(1,2,3,5,4,8,9,10,11,12,13,6,7)]
+
+rm(stations_2017_test, test_data_q2_test, points, points1_test)
+
+#Als .RDS speichern
+saveRDS(test_data_q2, "Data/test_data_q2.RDS")
+
+```
+
+
+```{r}
+test_data_q2 <- read_rds("Data/test_data_q2.RDS")
+```
+
+
+
 ### Lineare Regression
 
 Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird eine lineare Regression als Benchmark durchgeführt. Es werden für die beiden Forschungsfragen lineare Regressionsmodelle erstellt, die mit den Testdaten eine Vorhersage für die Nutzeranzahl treffen. Der Fehler, der hierbei gemacht wird, wird in Form des **M**ean **S**quared **E**rror (MSE) gemessen und mit dem des KNN verglichen.
@@ -1718,13 +1839,16 @@ hourly_test[,c(4, 8:68)] <- effectcoding(hourly_test[,c(4, 8:68)])
 
 Vorbereiten der des anderen DAtensatzes
 
-```{r}
+```{r eval=FALSE, echo=TRUE}
+# Data Table variante
+
+#library(data.table)
+
+#q2_starts_w_nn <- as.data.table(q2_starts_w)
+# Dataframe für LSTM erstellen
+q2_starts_w_nn <- q2_starts_w
+
 #Dummyvariablen erstellen
-library(data.table)
-
-q2_starts_w_nn <- as.data.table(q2_starts_w)
-
-
 q2_starts_w_nn <- dummy_cols(q2_starts_w, c("weekday", "start_station_name"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
@@ -1737,15 +1861,23 @@ names(q2_starts_w_nn) <- str_replace_all(names(q2_starts_w_nn), c(" " = "_"))
 Funktioniert nicht!
 
 
+
 Neue Variante mit neighborhoods.
+
+#### Trainingdaten für LSTM vorbereiten
 
 ```{r}
 
+# Data Table variante
+#library(data.table)
+
+#q2_starts_w2_nn <- as.data.table(q2_starts_w2_agg)
+
+# Dataframe für LSTM erstellen
+
+q2_starts_w2_nn <- q2_starts_w2_agg
+
 #Dummyvariablen erstellen
-library(data.table)
-
-q2_starts_w2_nn <- as.data.table(q2_starts_w2_agg)
-
 
 q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood"), remove_first_dummy = T, remove_selected_columns = T)
 
@@ -1753,10 +1885,51 @@ q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood"), rem
 names(q2_starts_w2_nn) <- str_replace_all(names(q2_starts_w2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-q2_starts_w2_nn[,c(11:283)] <- effectcoding(q2_starts_w2_nn[,c(11:283)])
+q2_starts_w2_nn[,c(11:65)] <- effectcoding(q2_starts_w2_nn[,c(11:65)])
 
 ```
 
+#### Testdaten für LSTM vorbereiten
+
+```{r}
+
+# Data Table variante
+#test_data_q2_nn <- as.data.table(test_data_q2)
+
+# Dataframe für LSTM erstellen
+
+test_data_q2_nn <- test_data_q2
+
+#Dummyvariablen erstellen
+test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(test_data_q2_nn) <- str_replace_all(names(test_data_q2_nn), c(" " = "_"))
+
+#Dummys effektkodieren
+test_data_q2_nn[,c(11:72)] <- effectcoding(test_data_q2_nn[,c(11:72)])
+```
+
+Vergleich der Datensätze
+
+```{r}
+df1 <- colnames(test_data_q2_nn)
+df2 <- colnames(q2_starts_w2_nn)
+
+
+setdiff(df1,df2)
+
+test_data_q2_nn$neighborhood_Astoria <- NULL
+test_data_q2_nn$neighborhood_Crown_Heights <- NULL
+test_data_q2_nn$neighborhood_Ditmars_Steinway <- NULL
+test_data_q2_nn$neighborhood_Harlem <- NULL
+test_data_q2_nn$neighborhood_Morningside_Heights <- NULL
+test_data_q2_nn$neighborhood_Prospect_Heights <- NULL
+test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
+
+q2_starts_w2_nn <- q2_starts_w2_nn %>%
+  rename(start_date = date)
+```
 
 
 #### cross validation
