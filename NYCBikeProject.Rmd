@@ -1929,6 +1929,8 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 q2_starts_w2_nn <- q2_starts_w2_nn %>%
   rename(start_date = date)
+
+rm(df,df1,df2)
 ```
 
 
