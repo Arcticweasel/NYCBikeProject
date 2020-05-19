@@ -1643,6 +1643,13 @@ apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
 #Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
 hourly_test$neighborhood <- as.character(hourly_test$neighborhood)
 
+#Bezirke ausfindig machen, die in 2017 vorkommen, aber nicht in 2016 und diese eliminieren
+setdiff(hourly_test$neighborhood, hourly_starts_nh$neighborhood)
+hourly_test <- hourly_test %>%
+  filter(neighborhood != "Astoria" & neighborhood != "Crown Heights" & neighborhood != "Ditmars Steinway" &
+           neighborhood != "Harlem" & neighborhood != "Morningside Heights" & 
+           neighborhood != "Prospect Heights" & neighborhood != "Prospect-Lefferts Gardens")
+
 #Als .RDS speichern
 saveRDS(hourly_test, "Data/q1_starts_test.RDS")
 
