@@ -176,7 +176,7 @@ saveRDS(dezember, "Bike_Data_Dez.RDS")
 
 Die einzelnen Datensätze für jeden Monat werden geladen und in einem Datensatz mit dem Namen "bike" zusammengefasst. Da in den Datensätzen Januar bis September die Start- und Stopzeiten als <character> formatiert sind, in den Monaten Oktober bis Dezember aber als Unixtime bzw. bereits richtig umgewandelt als <datetime>, muss vor der Zusammenführung das Format vereinheitlicht werden. Hierfür wird in den Monaten Januar bis September der Datentyp von <character> zu <datetime> umgewandelt. So ist weiteres Arbeiten mit den Datumsangaben problemlos möglich.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 df1 <- read_rds("Data/Bike_Data_Jan.RDS")
 df1$starttime <- mdy_hms(df1$starttime)
 df1$stoptime <- mdy_hms(df1$stoptime)
@@ -253,7 +253,7 @@ weather_test_interpolated <- na_interpolation(weather_test$precipitation, option
 Die Spalten usertype und birth_year enthalten als einzige fehlende Werte. Um einen sauberen Datensatz zu erhalten, haben wir uns dazu entschlossen die Zeilen, die fehlende Werte enthalten aus dem Datensatz zu entfernen. Die hat zwei Gründe. Zum Einen kann das Geburtsjahr, sowie auch der Nutzertyp (Subscriber oder Customer) nicht sinnvoll interpoliert werden. Es können von den davor und danach liegenden Datenpunkten keine sinnvollen Rückschlüsse auf die fehlenden Werte gezogen werden. Zum Anderen liegt hier ein ausreichend großer Datensatz vor (über 13 000 000 Zeilen), sodass der Informationsverlust, der durch das Löschen von ca. 1 600 000 Zeilen gering ist. So können Verzerrungen durch falsch interpolierte Werte vermieden werden.
 
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 bike <- na.omit(bike)
 ```
 ```{r, eval=FALSE, echo=TRUE}
@@ -1263,7 +1263,7 @@ Um die erste Forschungsfrage beantworten zu können, wird der Datensatz hourly_s
 
 Zunächst wird ein Datensatz erstellt, der nach Bezirken gruppiert ist. Hierfür wird der bike Datensatz mit dem Datensatz gejoined, der die Stationen und Bezirke enthält. Aufgrund von Überschneidungen in den Längen- und Breitengraden ist für die Station Nr. 160 in einigen Stunden kein Bezirk vorhanden. Dieser ist aber bekannt und wird eingesetzt. Hiernach gibt es noch 3 fehlende Bezirkswerte. Diese gehören zu einer Station ohne Koordinaten und werden mit dem Bezirk "missing" ersetzt um explizite fehlende Werte zu erhalten. Der vorhandene Datensatz wird nach Bezirken gruppiert und so aufbereitet wie im Abschnitt *Preprocessing*. Hiernach wird die Variable weekday für den Wochentag erstellt, sowie die Variable Holiday, die angibt, ob es sich um einen Feiertag handelt. Es folgt ein Join mit dem Datensatz hourly_weather_16, der stündliche Wetterdaten enthält. Da zwischen dem 23.01. und 26.01.2016 keine Fahrten stattfinden, werden die entsprechenden Zeilen mit den Wetterdaten gelöscht. Es fehlen auch Wetterdaten für einige Stunden, die mit Hilfe der Spline-Interpolation sinnvoll geschätzt und ersetzt werden können. 
 
-Die zuvor eingefügte Variable Wochenende wird wieder aus dem Datensatz entfernt, da das Muster, dass am Wochenende wesentlich weniger Nutzer die Räder fahren bereits über die Variable Weekday abgedeckt wird. Dadurch wird dem Problem der Kollinearität vorgebeugt. Zu guter letzt wird der Datentyp der Spalte neighborhood von factor zu character konvertiert, da so nicht genutzte Bezirke, die als level des factors vorhanden waren, nicht länger gespeichert werden.
+Die zuvor eingefügte Variable Wochenende wird wieder aus dem Datensatz entfernt, da das Muster, dass am Wochenende wesentlich weniger Nutzer die Räder fahren bereits über die Variable Weekday abgedeckt wird. Dadurch wird dem Problem der Kollinearität vorgebeugt. Zu guter Letzt wird der Datentyp der Spalte neighborhood von factor zu character konvertiert, da so nicht genutzte Bezirke, die als level des factors vorhanden waren, nicht länger gespeichert werden.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1307,6 +1307,13 @@ hourly_starts_nh$weekday <- factor(hourly_starts_nh$weekday, ordered = FALSE)
 #Variable für Feiertag einfügen
 hourly_starts_nh$holiday <- ifelse(isBizday(as.timeDate(hourly_starts_nh$start_date), holidayNYSE(2016))==FALSE,1,0)
 
+#Variable für den Monat einfügen
+hourly_starts_nh$month <- month(hourly_starts_nh$start_date, abbr = F, label = T)
+hourly_starts_nh$month <- factor(hourly_starts_nh$month, ordered = FALSE)
+
+#Variable für die Woche einfügen
+hourly_starts_nh$week <- week(hourly_starts_nh$start_date)
+
 #Wetterdaten hinzufügen
 hourly_starts_nh <- hourly_starts_nh %>%
   full_join(hourly_weather_16, by = c("start_date" = "date", "start_hour" = "hour"))
@@ -1320,7 +1327,7 @@ hourly_starts_nh <- hourly_starts_nh[complete.cases(hourly_starts_nh[,3:7]),]
 
 #Fehlende Werte überprüfen und interpolieren
 apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
-hourly_starts_nh[,8:10] <- na_interpolation(hourly_starts_nh[,8:10], option = "spline")
+hourly_starts_nh[,10:12] <- na_interpolation(hourly_starts_nh[,10:12], option = "spline")
 
 #Variable Weekend entfernen, da Wochentage für Betrachtung ausreichen
 hourly_starts_nh$weekend <- NULL
@@ -1628,10 +1635,13 @@ hourly_test <- hourly_test %>%
   group_by(start_date, start_hour, neighborhood) %>%
   summarise(user_count = n()) %>%
   mutate(weekday = wday(start_date, abbr = F, label = T, week_start = 1),
-         holiday = ifelse(isBizday(as.timeDate(start_date), holidayNYSE(2017))==FALSE,1,0),)
+         holiday = ifelse(isBizday(as.timeDate(start_date), holidayNYSE(2017))==FALSE,1,0),
+         month = month(start_date, abbr = F, label = T),
+         week = week(start_date))
 
-#Variable für Wochentag als ungeordneten Faktor speichern
+#Variablen für Wochentag und Monat als ungeordneten Faktor speichern
 hourly_test$weekday <- factor(hourly_test$weekday, ordered = FALSE)
+hourly_test$month <- factor(hourly_test$month, ordered = FALSE)
 
 #Wetterdaten hinzufügen
 hourly_test <- hourly_test %>%
@@ -1779,11 +1789,11 @@ Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird ei
 
 Für die stündlichen Nutzerdaten werden zwei Regressionen durchgeführt. Dies ist der Fall, da sich die Granularität der beiden Datensätze voneinander unterscheidet. Für einen Datensatz sollen die Nutzerzahlen je Bezirk bestimmt werden, für den anderen Datensatz die Nutzerzahlen je Station.
 
-In einem ersten Schritt wird eine lineare Regression auf Bezirksebene durchgeführt.
+In einem ersten Schritt wird eine lineare Regression auf Bezirksebene durchgeführt. Die Variable start_date wird hierbei nicht berücksichtigt, da sich mit der Variable week eine Kollinearität ergibt. Diese wird weiterhin berücksichtigt.
 
 ```{r}
-#Regressionsmodell mit Bezirken ##Ergebnis hat sich verändert?!Nochmal prüfen##
-model_q1_nh <- as.formula(user_count ~ .)
+#Regressionsmodell mit Bezirken
+model_q1_nh <- as.formula(user_count ~ . -start_date)
 lin_reg_nh <- lm(model_q1_nh, hourly_starts_nh)
 summary(lin_reg_nh)
 anova(lin_reg_nh)
@@ -1807,7 +1817,7 @@ test_rmse
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 #Bestimmen welche Variablen signifikant sind
 test_sig <- summary(lin_reg_nh)$coefficients[-1,4] < 0.05
 
@@ -1844,16 +1854,16 @@ Um ein künstliches neuornales Netz zu erhalten, das fehlerfrei läuft, müssen 
 
 ```{r}
 #Dummyvariablen erstellen
-hourly_starts_nh <- dummy_columns(hourly_starts_nh, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
-hourly_test <- dummy_cols(hourly_test, c("neighborhood", "weekday"), remove_first_dummy = T, remove_selected_columns = T)
+hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("start_hour", "neighborhood", "weekday", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
+hourly_test <- dummy_cols(hourly_test, c("start_hour", "neighborhood", "weekday", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(hourly_starts_nh) <- str_replace_all(names(hourly_starts_nh), c(" " = "_"))
 names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 
 #Dummys effektkodieren
-hourly_starts_nh[,c(4, 8:61)] <- effectcoding(hourly_starts_nh[,c(4, 8:61)])
-hourly_test[,c(4, 8:68)] <- effectcoding(hourly_test[,c(4, 8:68)])
+hourly_starts_nh[,c(3, 7:146)] <- effectcoding(hourly_starts_nh[,c(3, 7:146)])
+hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
 
 ```
 
