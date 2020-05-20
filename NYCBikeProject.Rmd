@@ -1390,6 +1390,8 @@ q2_starts <- q2_starts %>%
   )
 
 q2_starts_w <- left_join(q2_starts, weather, by = "date")
+
+
 ```
 
 Aggregation eines DAtensatzes mit Neighborhoods
@@ -1482,26 +1484,6 @@ saveRDS(q2_starts_w2_agg, "Data/q2_starts_w2_agg.RDS")
 
 ```{r}
 q2_starts_w2_agg <- read_rds("Data/q2_starts_w2_agg.RDS")
-```
-
-
-
-```{r}
-#Regression mit q2_starts_w
-options(max.print=450)
-model_q2 <- as.formula(anzahl ~ .)
-lin_reg_q2 <- lm(model_q2, q2_starts_w)
-summary(lin_reg_q2)
-```
-
-
-```{r}
-#Regression mit q2_starts_w2_agg
-options(max.print=450)
-model_q2_w2_agg <- as.formula(anzahl ~ .)
-lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
-summary(lin_reg_q2_w2_agg)
-
 ```
 
 
@@ -1655,6 +1637,7 @@ saveRDS(hourly_test, "Data/q1_starts_test.RDS")
 
 ```
 
+
 ```{r}
 hourly_test <- read_rds("Data/q1_starts_test.RDS")
 ```
@@ -1759,6 +1742,14 @@ test_data_q2 <- test_data_q2[, c(1,2,3,5,4,8,9,10,11,12,13,6,7)]
 
 rm(stations_2017_test, test_data_q2_test, points, points1_test)
 
+
+#Bezirke ausfindig machen, die in 2017 vorkommen, aber nicht in 2016 und diese eliminieren
+setdiff(test_data_q2$neighborhood, q2_starts_w2_agg$neighborhood)
+test_data_q2 <- test_data_q2 %>%
+  filter(neighborhood != "Astoria" & neighborhood != "Crown Heights" & neighborhood != "Ditmars Steinway" &
+           neighborhood != "Harlem" & neighborhood != "Morningside Heights" & 
+           neighborhood != "Prospect Heights" & neighborhood != "Prospect-Lefferts Gardens")
+
 #Als .RDS speichern
 saveRDS(test_data_q2, "Data/test_data_q2.RDS")
 
@@ -1836,6 +1827,52 @@ Da der Datensatz in bearbeiteter Form mehrere Gigabyte groß ist, kann keine Ana
 
 #### Tägliche Regression
 
+
+
+```{r}
+q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  rename(
+    start_date = date
+  )
+```
+
+
+```{r}
+#Regression mit q2_starts_w
+options(max.print=450)
+model_q2 <- as.formula(anzahl ~ .)
+lin_reg_q2 <- lm(model_q2, q2_starts_w)
+summary(lin_reg_q2)
+```
+
+
+```{r}
+#Regression mit q2_starts_w2_agg
+options(max.print=450)
+model_q2_w2_agg <- as.formula(anzahl ~ .)
+lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
+summary(lin_reg_q2_w2_agg)
+
+```
+
+
+Prediction
+
+```{r}
+
+
+#Vorhersage mit Testdaten
+lin_reg_q2_predictions <- predict(lin_reg_q2_w2_agg, test_data_q2)
+
+test_q2_mse <- mean((test_data_q2$anzahl - lin_reg_q2_predictions) ^ 2)
+test_q2_rmse <- sqrt(mean((test_data_q2$anzahl - lin_reg_q2_predictions) ^ 2))
+test_q2_mse
+test_q2_rmse
+```
+
+
+
+
 ### KNN
 
 #### Stündliche Daten Aufbereiten
@@ -1853,7 +1890,7 @@ names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 
 #Dummys effektkodieren
 hourly_starts_nh[,c(4, 8:61)] <- effectcoding(hourly_starts_nh[,c(4, 8:61)])
-hourly_test[,c(4, 8:68)] <- effectcoding(hourly_test[,c(4, 8:68)])
+hourly_test[,c(4, 8:61)] <- effectcoding(hourly_test[,c(4, 8:61)])
 
 ```
 
@@ -1929,7 +1966,7 @@ test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood"), rem
 names(test_data_q2_nn) <- str_replace_all(names(test_data_q2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-test_data_q2_nn[,c(11:72)] <- effectcoding(test_data_q2_nn[,c(11:72)])
+test_data_q2_nn[,c(11:65)] <- effectcoding(test_data_q2_nn[,c(11:65)])
 ```
 
 Vergleich der Datensätze
@@ -1949,8 +1986,6 @@ test_data_q2_nn$neighborhood_Morningside_Heights <- NULL
 test_data_q2_nn$neighborhood_Prospect_Heights <- NULL
 test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
-q2_starts_w2_nn <- q2_starts_w2_nn %>%
-  rename(start_date = date)
 
 rm(df,df1,df2)
 ```
