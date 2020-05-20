@@ -777,24 +777,32 @@ theme_set(theme_minimal())
 
 Zunächst werden die monatlichen Nutzerzahlen betrachtet.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Nutzerzahlen_Pro_Monat.png")
+
 q2_starts %>%
-  group_by(month = month(date_start, label = T)) %>%
+  group_by(month = month(date, label = T)) %>%
   summarise(user_sum = sum(anzahl)) %>%
   ggplot(aes(month, user_sum)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
   geom_point(colour = "cadetblue", size = 1.5) +
   labs(title = "Nutzeranzahl Pro Monat", y = "Nutzeranzahl",
        x = "Monat")
+
+dev.off()
 ```
+
+![Nutzerzahlen Pro Monat](Grafiken/Nutzerzahlen_Pro_Monat.png)
 
 Diese entsprechen weitestgehend den Erwartungen. In den Wintermonaten sind die Nutzerzahlen wesentlich geringer als in den Sommermonaten. Ab Februar steigen die Nutzerzahlen bis September stetig an, mit Ausnahme eines Einbruchs im Juli. Dieser kann verschiedene Gründe haben. Zum Einen könnten viele Menschen ihren Sommerurlaub nehmen und verreisen oder die Temperaturen könnten so hoch sein, dass Radfahren als unangenehm empfunden wird.
 
 Als nächstes sollen die monatlichen Nutzerzahlen von Männern und Frauen verglichen werden, um zu sehen, ob Unterschiede bestehen.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Nutzerzahlen_Pro_Monat_Nach_Geschlecht.png")
+
 q2_starts %>%
-  group_by(month = month(date_start, label = T)) %>%
+  group_by(month = month(date, label = T)) %>%
   summarise(male_sum = sum(male),
             female_sum = sum(woman)) %>%
   ggplot() +
@@ -804,15 +812,22 @@ q2_starts %>%
                       labels = c("Male", "Female")) +
   labs(title = "Nutzeranzahl Pro Monat Nach Geschlecht",
        y = "Nutzeranzahl", x = "Monat")
+
+dev.off()
 ```
+
+![Nutzerzahlen Pro Monat Nach Geschlecht](Grafiken/Nutzerzahlen_Pro_Monat_Nach_Geschlecht.png)
 
 Auch nach der Trennung der Nutzerzahlen nach Geschlecht ist das vorherige Muster noch sichtbar. Jedoch ist klar erkennbar, dass deutlich mehr Männer das Fahrradangebot nutzen als Frauen. Hier kann weitere Forschung seitens des Unternehmens oder der Stadt New York betrieben werden, um herauszufinden, warum im Verhältnis zu den Männern so wenige Frauen das Angebot nutzen. Hieraus können dann Strategien abgeleitet werden, um mehr Frauen anzusprechen und sie als Kunden zu gewinnen.
 
 In einem nächsten Schritt werden die durchschnittlichen Nutzerzahlen, sowie die durchschnittliche Fahrtdauer pro Wochentag betrachtet.
 
-```{r}
-p <- q2_starts %>%
-  group_by(wday = wday(date_start, label = T, abbr = F, week_start = 1)) %>%
+```{r, eval=FALSE, echo=TRUE}
+
+png("Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png")
+
+q2_starts %>%
+  group_by(wday = wday(date, label = T, abbr = F, week_start = 1)) %>%
   summarise(user_mean = round(sum(anzahl)/365)) %>%
   ggplot(aes(wday, user_mean)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
@@ -820,8 +835,10 @@ p <- q2_starts %>%
   labs(title = "Durschnittliche Nutzeranzahl Pro Wochentag", y = "Durchschnittliche Nutzeranzahl",
        x = "Wochentag")
 
-p1 <- q2_starts %>%
-  group_by(wday = wday(date_start, label = T, abbr = F, week_start = 1)) %>%
+png("Durchschnittliche_Fahrtdauer_Pro_Wochentag.png")
+
+q2_starts %>%
+  group_by(wday = wday(date, label = T, abbr = F, week_start = 1)) %>%
   summarise(mean_tripduration = mean(avg_tripduration)) %>%
   ggplot(aes(wday, mean_tripduration)) +
   geom_line(colour = "cadetblue", size = 0.75, group = 1) +
@@ -829,15 +846,20 @@ p1 <- q2_starts %>%
   labs(title = "Durschnittliche Fahrtdauer Pro Wochentag", y = "Durchschnittliche Fahrtdauer",
        x = "Wochentag")
 
-grid.arrange(p, p1, nrow = 2)
+dev.off()
+
 ```
+
+![Durchschnittliche_Nutzeranzahl_Pro_Wochentag](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png)
 
 Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
 Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
 
 Um weitere Anhaltspunkte für die Nutzung zu erhalten, werden die Nutzerzahlen eines Tages in Stundenintervallen betrachtet.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Durchschnittliche_Nutzeranzahl_Pro_Stunde.png")
+
 hourly_starts %>%
   group_by(start_hour) %>%
   summarise(user_mean = round(sum(user_count)/365)) %>%
@@ -846,13 +868,19 @@ hourly_starts %>%
   geom_point(colour = "cadetblue4", size = 1.5) +
   labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde", x = "Stunde", 
        y = "Durchschnittliche Nutzeranzahl")
+
+dev.off()
 ```
+
+![Durchschnittliche_Nutzeranzahl_Pro_Stunde](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Stunde.png)
 
 Auch hier kann ein Muster erkannt werden. Von 5 Uhr bis 9 Uhr morgens steigen die Nutzerzahlen und fallen danach ab, um von 15 bis 17 Uhr wieder anzusteigen. Dies spricht für die zuvor geäußerte Vermutung, dass viele Kunden die Fahrräder für den Arbeitsweg nutzen. Am Vormittag und Nachmittag sind die Nutzerzahlen am höchsten. Dies kann den Arbeitsbeginn und das Arbeitsende markieren.
 
 Als nächstes werden nun die Nutzerzahlen getrennt nach Abonnement (usertype) betrachtet, um festzustellen, ob Unterschiede in der täglichen Nutzung bestehen.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Durchschnittliche_Nutzeranzahl_Pro_Stunde_Nach_Abo.png")
+
 hourly_starts %>%
   group_by(start_hour) %>%
   summarise(subscriber_mean = round(sum(subscriber_count)/365),
@@ -864,13 +892,19 @@ hourly_starts %>%
                       labels = c("Subscriber", "Customer")) +
   labs(title = "Durchschnittliche Nutzeranzahl Pro Stunde Nach Abonnement",
        y = "Durchschnittliche Nutzeranzahl", x = "Stunde")
+
+dev.off()
 ```
+
+![Durchschnittliche Nutzeranzahl Pro Stunde Nach Abonnement](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Stunde_Nach_Abo.png)
 
 Es ist zu sehen, dass für die Nutzergruppe, die ein jährliches Abo hat (Subscriber), das stündliche Muster erhalten bleibt. Jeweils morgens und nachmittags zu Arbeitsbeginn und -ende nutzen die meisten Kunden das Angebot. Die Nutzergruppe Customer, die nur einen ein- oder drei-Tages-Pass nutzen ist stark unterrepräsentiert. Dies kann darauf schließen lassen, dass das Angebot eher von Personen genutzt wird, die dies regelmäßig nutzen wollen, wie z.B. für den Arbeitsweg, und eher nicht für z.B. Tagesausflüge. Ähnlich wie bei den starken Unterschieden in der Nutzung bei den Geschlechtern, kann es hier lohnenswert sein die Hintergründe zu betrachten und weiter zu erforschen, um neue Nutzergruppen zu aquirieren.
 
 Um mehr über die Nutzer zu erfahren, wird nun das durchschnittliche Alter der Nutzer pro Stunde betrachtet.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Durchschnittliches_Alter_Der_Nutzer_Pro_Stunde.png")
+
 hourly_starts %>%
   group_by(start_hour) %>%
   summarise(mean_age = mean(avg_age)) %>%
@@ -879,13 +913,19 @@ hourly_starts %>%
   geom_point(colour = "cadetblue", size = 1.5) +
   labs(title = "Durschnittliches Alter Der Nutzer Pro Stunde", y = "Durchschnittliches Alter",
        x = "Stunde")
+
+dev.off()
 ```
+
+![Durchschnittliches Alter Der Nutzer Pro Stunde](Grafiken/Durchschnittliches_Alter_Der_Nutzer_Pro_Stunde.png)
 
 Es ist zu erkennen, dass die Nutzer am Abend und in der Nacht jünger sind, als die Nutzer am Tag. Hierfür kann es verschiedene Gründe geben. Zum Beispiel kann es sein, dass jüngere Kunden eher nachts ausgehen und für den Heimweg das Rad nehmen. Dies kann allerdings nicht abschließend bestätig werden, da zu wenig über die Nutzer bekannt ist. Es kann sich hier ebenfalls lohnen, die Altersstruktur der Nutzer genauer zu betrachten, um neue Nutzergruppen zu identifizieren. Es könnte beispielsweise sein, dass sich die Nutzer, die mit dem Rad zu Arbeit fahren, in mehr als der Nutzungsart von denjenigen unterscheiden, die nachts mit dem Rad von einer Feier nach Hause fahren. In der Konsequenz können die unterschiedlichen Nutzergruppen besser abgestimmt auf ihr Alter und den Nutzungszweck angesprochen werden.
 
 In einer weiteren Grafik wird die durchschnittliche Fahrtdauer pro Stunde betrachtet.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+png("Durchschnittliche_Fahrtdauer_Pro_Stunde.png")
+
 hourly_starts %>%
   group_by(start_hour) %>%
   summarise(mean_tripduration = mean(avg_tripduration)) %>%
@@ -894,15 +934,21 @@ hourly_starts %>%
   geom_point(colour = "cadetblue", size = 1.5) +
   labs(title = "Durschnittliche Fahrtdauer Pro Stunde", y = "Durchschnittliche Fahrtdauer",
        x = "Stunde")
+
+dev.off()
 ```
+
+![Durchschnittliche Fahrtdauer Pro Stunde](Grafiken/Durchschnittliche_Fahrtdauer_Pro_Stunde.png)
 
 Die durchschnittliche Fahrtzeit pro Stunde unterscheidet sich nur leicht. Sie bewegt sich in einem Rahmen von 700 bis 900 Sekunden bzw. 11.5 und 15 Minuten. Am längsten ist die Fahrtzeit in der Zeit zwischen 2 und 3 Uhr morgens. Dies könnte darauf hindeuten, dass die Kunden nachts eher weiter entfernt von ihrem Wohnort aufhalten.
 
 In der letzten Grafik werden die Nutzerzahlen je Durchschnittstemperatur betrachtet.
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, eval=FALSE, echo=TRUE}
+png("Nutzeranzahl_Je_Durchschnittstemperatur.png")
+
 q2_starts %>%
-  full_join(weather, by = c("date_start" = "date")) %>%
+  full_join(weather, by = c("date" = "date")) %>%
   group_by(average.temperature) %>%
   summarise(user_sum = sum(anzahl)) %>%
   ggplot(aes(x = average.temperature, y = user_sum)) +
@@ -911,7 +957,11 @@ q2_starts %>%
   labs(title = "Nutzeranzahl je Durchschnittstemperatur", x = "Durchschnittstemperatur in Grad Celsius",
        y = "Nutzeranzahl") +
   ylim(0,400000)
+
+dev.off()
 ```
+
+![Nutzeranzahl Je Durchschnittstemperatur](Grafiken/Nutzeranzahl_Je_Durchschnittstemperatur.png)
 
 Es ist eine klare Tendenz erkennbar. Mit steigender Temperatur steigt die Anzahl der Nutzer. Ab einer gewissen Temperatur sinken die Nutzerzahlen wieder. Hier lässt sich vermuten, dass es den Nutzern zu warm ist, um Fahrrad zu fahren.
 
@@ -1935,7 +1985,7 @@ names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 
 hourly_starts_nh[,c(3, 7:146)] <- effectcoding(hourly_starts_nh[,c(3, 7:146)])
 hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
-
+```
 
 #### Tägliche Daten Aufbereiten
 
