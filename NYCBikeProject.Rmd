@@ -1597,7 +1597,7 @@ Da zur Beantwortung der beiden Forschungsfragen unterschiedliche Anforderungen a
 
 #### Aufbereitung Für Stündliche Analyse
 
-Für die stündliche Analyse werden die Daten wie folgt aufbereitet. Wie zuvor beim Trainingsdatensatz wird die Spalte starttime in die zwei Spalten Datum und Stunde aufgesplittet. Da eine Betrachtung auf Bezirkseben erfolgt, werden die Bezirke zu dem Datensatz hinzugefügt. Für zwei Stationen ist keine Zuordnung zu einem Bezirk möglich, sodass die fehlenden Werte in explizite fehlende Werte umgewandelt werden. Dies hat zur Folge, dass der Bezirk dieser Stationen "Missing" benannt wird. Wie auch die Trainingsdaten werden die Testdaten nach dem Bezirk, dem Datum und der Stunde gruppiert, um die jeweiligen Nutzerzahlen aufsummieren zu können. Die Variablen, die die Ankunftsstationen betreffen, sowie die Nutzerdaten, wie z.B. Alter, Geschlecht und Fahrtdauer, werden nicht weiter betrachtet. Sie werden nicht weiter in die Analyse einfließen, da es das Ziel ist zukünftige Fahrten zu prognostizieren. Es ist dann noch nicht bekannt welches Alter die Fahrer haben werden, wie lang sie fahren oder welches Geschlecht sie haben. Es werden ebenfalls Variablen für den Wochentag und die Feiertage eingefügt, sowie Wetterdaten angefügt.
+Für die stündliche Analyse werden die Daten wie folgt aufbereitet. Wie zuvor beim Trainingsdatensatz wird die Spalte starttime in die zwei Spalten Datum und Stunde aufgesplittet. Da eine Betrachtung auf Bezirkseben erfolgt, werden die Bezirke zu dem Datensatz hinzugefügt. Für zwei Stationen ist keine Zuordnung zu einem Bezirk möglich, sodass die fehlenden Werte in explizite fehlende Werte umgewandelt werden. Dies hat zur Folge, dass der Bezirk dieser Stationen "Missing" benannt wird. Da in 2017 neue Stationen auch in Bezirken errichtet wurden, die in 2016 noch über keine Stationen verfügten, werden diese "neuen" Bezirke aus den Daten entfernt. Sie können ohne Grundlage aus dem vorherigen Jahr nicht prognostiziert werden. Wie auch die Trainingsdaten werden die Testdaten nach dem Bezirk, dem Datum und der Stunde gruppiert, um die jeweiligen Nutzerzahlen aufsummieren zu können. Die Variablen, die die Ankunftsstationen betreffen, sowie die Nutzerdaten, wie z.B. Alter, Geschlecht und Fahrtdauer, werden nicht weiter betrachtet. Sie werden nicht weiter in die Analyse einfließen, da es das Ziel ist zukünftige Fahrten zu prognostizieren. Es ist dann noch nicht bekannt welches Alter die Fahrer haben werden, wie lang sie fahren oder welches Geschlecht sie haben. Es werden ebenfalls Variablen für den Wochentag und die Feiertage eingefügt, sowie Wetterdaten angefügt.
 
 ```{r, eval=FALSE, echo=TRUE}
 #Einen Testdatensatz erstellen
@@ -1642,6 +1642,13 @@ apply(hourly_starts_nh, 2, function(x) sum(is.na(x)))
 
 #Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
 hourly_test$neighborhood <- as.character(hourly_test$neighborhood)
+
+#Bezirke ausfindig machen, die in 2017 vorkommen, aber nicht in 2016 und diese eliminieren
+setdiff(hourly_test$neighborhood, hourly_starts_nh$neighborhood)
+hourly_test <- hourly_test %>%
+  filter(neighborhood != "Astoria" & neighborhood != "Crown Heights" & neighborhood != "Ditmars Steinway" &
+           neighborhood != "Harlem" & neighborhood != "Morningside Heights" & 
+           neighborhood != "Prospect Heights" & neighborhood != "Prospect-Lefferts Gardens")
 
 #Als .RDS speichern
 saveRDS(hourly_test, "Data/q1_starts_test.RDS")
@@ -1775,15 +1782,30 @@ Für die stündlichen Nutzerdaten werden zwei Regressionen durchgeführt. Dies i
 In einem ersten Schritt wird eine lineare Regression auf Bezirksebene durchgeführt.
 
 ```{r}
-#Regression mit Bezirken
+#Regressionsmodell mit Bezirken ##Ergebnis hat sich verändert?!Nochmal prüfen##
 model_q1_nh <- as.formula(user_count ~ .)
 lin_reg_nh <- lm(model_q1_nh, hourly_starts_nh)
 summary(lin_reg_nh)
 anova(lin_reg_nh)
 
+train_mse <- mean((lin_reg_nh$residuals)^2)
+train_rmse <- sqrt(mean((lin_reg_nh$residuals)^2))
+train_mse
+train_rmse
 ```
 
 Die Anova deutet darauf hin, dass der Einfluss aller Variablen auf die Anzahl an Radfahrern statistisch signifikant ist, da der p-Wert äußerst gering ist. Die Funktion lm() hat zur Durchführung der Regression Dummyvariablen für die Variablen neighborhood, den Bezirk, und weekday, den Wochentag, erstellt. Sieht man sich die genaue Zusammenfassung des Modells an, wird sichtbar, dass der Einfluss zweier Bezirke statistisch nicht signifikant ist, d.h. zufällig ist. Sie werden dennoch nicht aus dem Modell entfernt, da sich sonst ein unvollständiges Bild der Situation ergeben würde, denn in diesen Bezirken gibt es auch Leihstationen, die genutzt werden. Sieht man jedoch auf den Wert für R-Quadrat, der sich auf 0.3946 beläuft, wird klar, dass das Modell die Situation nicht in ihrer Vollständigkeit erfassen kann. Dieser Wert ist sehr niedrig und sagt aus, dass nur 39.46% der Varianz in den Daten durch dieses Regressionsmodell erklärt werden können. Wirft man einen Blick auf die Visualisierungen im Kapitel **Basic Visualizations** wird klar weshalb. Die lineare Regression kann nur in eine Richtung vorhersagen treffen. Z.B. Wenn sich x um 1 erhöht/verringert, erhöht/verringert sich y um z. Es ist jedoch zu sehen, dass die Zusammenhänge in den Daten nicht linearer Natur sind, denn wenn die Temperatur eine bestimmte Marke überschreitet fahren weniger Menschen mit dem Rad. Das Selbe lässt sich bei der Uhrzeit beobachten. Morgens fahren viele Menschen Rad, über Tag weniger und am Nachmittag wieder mehr, bis es in der Nacht wieder weniger wird. Es ist hier also wenig verwunderlich, dass ein lineares Modell den Einfluss der einzelnen Variablen nicht exakt wiedergibt.
+
+```{r}
+#Vorhersage mit Testdaten
+lin_reg_nh_predictions <- predict(lin_reg_nh, hourly_test)
+
+test_mse <- mean((hourly_test$user_count - lin_reg_nh_predictions) ^ 2)
+test_rmse <- sqrt(mean((hourly_test$user_count - lin_reg_nh_predictions) ^ 2))
+test_mse
+test_rmse
+```
+
 
 ```{r}
 #Bestimmen welche Variablen signifikant sind
