@@ -1475,6 +1475,24 @@ q2_starts_w2_agg$neighborhood <- as.character(q2_starts_w2_agg$neighborhood)
 
 rm(q2_starts_w, q2_starts)
 
+
+
+
+#Monat und Woche als Variablen eingefügt
+
+
+test_data_q2 <- test_data_q2 %>%
+  mutate(week = week(start_date))
+
+test_data_q2 <- test_data_q2 %>%
+  mutate(month = month(start_date, abbr = F, label = T))
+
+
+#Variable für Wochentag als ungeordneten Faktor speichern
+test_data_q2$weekday <- factor(test_data_q2$weekday, ordered = FALSE)
+test_data_q2$month <- factor(test_data_q2$month, ordered = FALSE)
+
+
 # Save Data
 saveRDS(q2_starts_w2_agg, "Data/q2_starts_w2_agg.RDS")
 
@@ -1750,6 +1768,21 @@ test_data_q2 <- test_data_q2 %>%
            neighborhood != "Harlem" & neighborhood != "Morningside Heights" & 
            neighborhood != "Prospect Heights" & neighborhood != "Prospect-Lefferts Gardens")
 
+
+#Monat und Woche als Variablen eingefügt
+
+
+test_data_q2 <- test_data_q2 %>%
+  mutate(week = week(start_date))
+
+test_data_q2 <- test_data_q2 %>%
+  mutate(month = month(start_date, abbr = F, label = T))
+
+
+#Variable für Wochentag als ungeordneten Faktor speichern
+test_data_q2$weekday <- factor(test_data_q2$weekday, ordered = FALSE)
+test_data_q2$month <- factor(test_data_q2$month, ordered = FALSE)
+
 #Als .RDS speichern
 saveRDS(test_data_q2, "Data/test_data_q2.RDS")
 
@@ -1837,10 +1870,10 @@ q2_starts_w2_agg <- q2_starts_w2_agg %>%
 ```
 
 
-```{r}
+```{r , eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w
 options(max.print=450)
-model_q2 <- as.formula(anzahl ~ .)
+model_q2 <- as.formula(anzahl ~ .-date)
 lin_reg_q2 <- lm(model_q2, q2_starts_w)
 summary(lin_reg_q2)
 ```
@@ -1849,7 +1882,7 @@ summary(lin_reg_q2)
 ```{r}
 #Regression mit q2_starts_w2_agg
 options(max.print=450)
-model_q2_w2_agg <- as.formula(anzahl ~ .)
+model_q2_w2_agg <- as.formula(anzahl ~ .-start_date)
 lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
 summary(lin_reg_q2_w2_agg)
 
