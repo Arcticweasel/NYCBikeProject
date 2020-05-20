@@ -1239,7 +1239,7 @@ basemap %>%
 
 Neuer versuch mit Daten die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einnen anderen Datensatz.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 newTest <- bike
 newTest <- newTest %>%
@@ -1279,7 +1279,13 @@ newTest_agg <- newTest %>%
   group_by(neighborhood, start_date, long, lat) %>%
   summarise(users = n())
 
+saveRDS(newTest_agg, "Data/newTest_agg.rds")
+```
 
+Load Data
+
+```{r}
+newTest_agg <- readRDS("Data/newTest_agg.rds")
 ```
 
 Nun versuche ich die Animation mit dem neuen Datensatz.
@@ -1538,16 +1544,16 @@ rm(q2_starts_w, q2_starts)
 #Monat und Woche als Variablen eingefügt
 
 
-test_data_q2 <- test_data_q2 %>%
-  mutate(week = week(start_date))
+q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  mutate(week = week(date))
 
-test_data_q2 <- test_data_q2 %>%
-  mutate(month = month(start_date, abbr = F, label = T))
+q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  mutate(month = month(date, abbr = F, label = T))
 
 
 #Variable für Wochentag als ungeordneten Faktor speichern
-test_data_q2$weekday <- factor(test_data_q2$weekday, ordered = FALSE)
-test_data_q2$month <- factor(test_data_q2$month, ordered = FALSE)
+q2_starts_w2_agg$weekday <- factor(q2_starts_w2_agg$weekday, ordered = FALSE)
+q2_starts_w2_agg$month <- factor(q2_starts_w2_agg$month, ordered = FALSE)
 
 
 # Save Data
@@ -1985,7 +1991,10 @@ names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 
 hourly_starts_nh[,c(3, 7:146)] <- effectcoding(hourly_starts_nh[,c(3, 7:146)])
 hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
+
+
 ```
+
 
 #### Tägliche Daten Aufbereiten
 
@@ -2031,13 +2040,13 @@ q2_starts_w2_nn <- q2_starts_w2_agg
 
 #Dummyvariablen erstellen
 
-q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood"), remove_first_dummy = T, remove_selected_columns = T)
+q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(q2_starts_w2_nn) <- str_replace_all(names(q2_starts_w2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-q2_starts_w2_nn[,c(11:65)] <- effectcoding(q2_starts_w2_nn[,c(11:65)])
+q2_starts_w2_nn[,c(11:128)] <- effectcoding(q2_starts_w2_nn[,c(11:128)])
 
 ```
 
@@ -2053,13 +2062,13 @@ q2_starts_w2_nn[,c(11:65)] <- effectcoding(q2_starts_w2_nn[,c(11:65)])
 test_data_q2_nn <- test_data_q2
 
 #Dummyvariablen erstellen
-test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood"), remove_first_dummy = T, remove_selected_columns = T)
+test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(test_data_q2_nn) <- str_replace_all(names(test_data_q2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-test_data_q2_nn[,c(11:65)] <- effectcoding(test_data_q2_nn[,c(11:65)])
+test_data_q2_nn[,c(11:87)] <- effectcoding(test_data_q2_nn[,c(11:87)])
 ```
 
 Vergleich der Datensätze
@@ -2080,7 +2089,12 @@ test_data_q2_nn$neighborhood_Prospect_Heights <- NULL
 test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 
-rm(df,df1,df2)
+rm(df1,df2)
+```
+
+
+```{r}
+
 ```
 
 
