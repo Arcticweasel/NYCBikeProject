@@ -1990,7 +1990,7 @@ names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 #Dummys effektkodieren
 
 hourly_starts_nh[,c(3, 7:146)] <- effectcoding(hourly_starts_nh[,c(3, 7:146)])
-hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
+hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(3, 7:105)])
 
 
 ```
