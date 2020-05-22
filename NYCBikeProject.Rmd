@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 ```
 
@@ -2000,7 +2000,7 @@ hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
 
 Vorbereiten der des anderen DAtensatzes
 
-```{r eval=FALSE, echo=TRUE}
+```{r, eval=FALSE, echo=TRUE}
 # Data Table variante
 
 #library(data.table)
