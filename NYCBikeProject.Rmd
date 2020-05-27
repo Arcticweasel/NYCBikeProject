@@ -20,6 +20,7 @@ library(lubridate)
 library(imputeTS)
 library(timeDate)
 library(fastDummies)
+library(forecast)
 source("Routinen/ANNUtils.r")
 ```
 
@@ -1976,7 +1977,7 @@ test_q2_rmse
 
 #### Stündliche Daten Aufbereiten
 
-Um ein künstliches neuornales Netz zu erhalten, das fehlerfrei läuft, müssen der Trainings- und Testdatensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood und weekday werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
+Um ein künstliches neuornales Netz zu erhalten, das fehlerfrei läuft, müssen der Trainings- und Testdatensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood, weekday, month, week und start_hour werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
 
 ```{r}
 #Dummyvariablen erstellen
@@ -1990,8 +1991,7 @@ names(hourly_test) <- str_replace_all(names(hourly_test), c(" " = "_"))
 #Dummys effektkodieren
 
 hourly_starts_nh[,c(3, 7:146)] <- effectcoding(hourly_starts_nh[,c(3, 7:146)])
-hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(4, 7:105)])
-
+hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(3, 7:105)])
 
 ```
 
@@ -2092,9 +2092,22 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 rm(df1,df2)
 ```
 
+#### Long-Short Term Memory Netz für stündliche Daten Erstellen
 
 ```{r}
+#Mit ARIMAX die optimale Anzahl der lags bestimmen
+arimax.Y <- as.numeric(hourly_starts_nh$user_count[1:10000])
+arimax.X <- as.matrix(hourly_starts_nh[1:10000,c(3:146)])
+hourly_arimax <- auto.arima(arimax.Y, xreg = arimax.X)
+arimax
 
+non_seasonal_ar_order <- arx$arma[1] # p
+non_seasonal_ma_order <- arx$arma[2] # q
+seasonal_ar_order <- arx$arma[3]
+seasonal_ma_order <- arx$arma[4]
+period_of_data <- arx$arma[5]
+non_seasonal_diff_order <- arx$arma[6] #d
+seasonal_diff_order <- arx$arma[7]
 ```
 
 
