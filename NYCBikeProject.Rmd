@@ -1544,8 +1544,8 @@ rm(q2_starts_w, q2_starts)
 #Monat und Woche als Variablen eingefügt
 
 
-q2_starts_w2_agg <- q2_starts_w2_agg %>%
-  mutate(week = week(date))
+#q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  #mutate(week = week(date))
 
 q2_starts_w2_agg <- q2_starts_w2_agg %>%
   mutate(month = month(date, abbr = F, label = T))
@@ -1838,8 +1838,8 @@ test_data_q2 <- test_data_q2 %>%
 #Monat und Woche als Variablen eingefügt
 
 
-test_data_q2 <- test_data_q2 %>%
-  mutate(week = week(start_date))
+#test_data_q2 <- test_data_q2 %>%
+  #mutate(week = week(start_date))
 
 test_data_q2 <- test_data_q2 %>%
   mutate(month = month(start_date, abbr = F, label = T))
@@ -2040,13 +2040,13 @@ q2_starts_w2_nn <- q2_starts_w2_agg
 
 #Dummyvariablen erstellen
 
-q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
+q2_starts_w2_nn <- dummy_cols(q2_starts_w2_nn, c("weekday", "neighborhood", "month"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(q2_starts_w2_nn) <- str_replace_all(names(q2_starts_w2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-q2_starts_w2_nn[,c(11:128)] <- effectcoding(q2_starts_w2_nn[,c(11:128)])
+q2_starts_w2_nn[,c(11:76)] <- effectcoding(q2_starts_w2_nn[,c(11:76)])
 
 ```
 
@@ -2062,13 +2062,13 @@ q2_starts_w2_nn[,c(11:128)] <- effectcoding(q2_starts_w2_nn[,c(11:128)])
 test_data_q2_nn <- test_data_q2
 
 #Dummyvariablen erstellen
-test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
+test_data_q2_nn <- dummy_cols(test_data_q2_nn, c("weekday", "neighborhood", "month"), remove_first_dummy = T, remove_selected_columns = T)
 
 #Namen der Dummys bearbeiten
 names(test_data_q2_nn) <- str_replace_all(names(test_data_q2_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-test_data_q2_nn[,c(11:87)] <- effectcoding(test_data_q2_nn[,c(11:87)])
+test_data_q2_nn[,c(11:68)] <- effectcoding(test_data_q2_nn[,c(11:68)])
 ```
 
 Vergleich der Datensätze
@@ -2091,11 +2091,162 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 rm(df1,df2)
 ```
+#### Arimax für alle Neighborhoods
 
+Aufwand zu groß alle Neighborhoods in einem Netz vorraussagen
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
+# Build ARIMAX model for training Data
+require(forecast)
+arx.Y <- q2_starts_w2_nn$anzahl
+arx.X <- as.matrix(q2_starts_w2_nn[,c(3:76)])
+arx <- auto.arima(arx.Y, xreg = arx.X)
+arx
+
+non_seasonal_ar_order <- arx$arma[1] # p
+non_seasonal_ma_order <- arx$arma[2] # q
+seasonal_ar_order <- arx$arma[3]
+seasonal_ma_order <- arx$arma[4]
+period_of_data <- arx$arma[5]
+non_seasonal_diff_order <- arx$arma[6] #d
+seasonal_diff_order <- arx$arma[7]
+```
+
+#### LSTM für alle Neighborhoods
+
+Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
+```{r, eval=FALSE, echo=TRUE}
+######
+# LSTM
+
+# Hyperparameters
+ann.epochs    <- 100
+ann.batchsize <- 32
+ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
+ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
+
+# Transform y (= price) into stationary and create lagged dataset
+tsdiff <- as.data.frame(build_stationary(q2_starts_w2_nn$anzahl, k = ann.lags))
+'if (ann.lags > 0) {
+  tsdiff <- tsdiff[c(-1:-ann.lags),]
+  colnames(tsdiff) <- c("price_diff", "pdiff_lag1","pdiff_lag2","pdiff_lag3","pdiff_lag4")
+}'
+
+df.ann <- cbind.data.frame(q2_starts_w2_nn[c((ann.lags+2):nrow(q2_starts_w2_nn)),], tsdiff)
+df.ann <- df.ann[,c(1:4,45:49,5:44)]
 
 ```
+
+#### LSTM für ein Neighborhood
+
+Als erstes werden die Daten neu aggregiert
+
+```{r}
+daily_neighborhood_train <- q2_starts_w2_agg %>%
+  filter(neighborhood == "Chelsea")
+
+daily_neighborhood_train$neighborhood <- NULL
+
+daily_neighborhood_test <- test_data_q2 %>%
+  filter(neighborhood == "Chelsea")
+
+
+
+
+```
+
+Regression
+
+```{r}
+#Regression mit daily_neighborhood_train
+options(max.print=450)
+daily_neighborhood_model <- as.formula(anzahl ~ .)
+lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
+summary(lin_reg_daily_neighborhood)
+
+```
+
+TrainDaten fürs LSTM Vorbereiten
+
+```{r}
+# Dataframe für LSTM erstellen
+
+daily_neighborhood_train_nn <- daily_neighborhood_train
+
+#Dummyvariablen erstellen
+
+daily_neighborhood_train_nn <- dummy_cols(daily_neighborhood_train_nn, c("weekday", "month"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(daily_neighborhood_train_nn) <- str_replace_all(names(daily_neighborhood_train_nn), c(" " = "_"))
+
+#Dummys effektkodieren
+daily_neighborhood_train_nn[,c(11:28)] <- effectcoding(daily_neighborhood_train_nn[,c(11:28)])
+```
+
+
+TestDaten fürs LSTM vorbereiten
+
+```{r}
+# Dataframe für LSTM erstellen
+
+daily_neighborhood_test_nn <- daily_neighborhood_test
+
+#Dummyvariablen erstellen
+
+daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday", "month"), remove_first_dummy = T, remove_selected_columns = T)
+
+#Namen der Dummys bearbeiten
+names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_test_nn), c(" " = "_"))
+
+#Dummys effektkodieren
+daily_neighborhood_test_nn[,c(11:21)] <- effectcoding(daily_neighborhood_test_nn[,c(11:21)])
+```
+
+
+Arimax
+
+```{r}
+# Build ARIMAX model for training Data
+require(forecast)
+n.arx.Y <- daily_neighborhood_train_nn$anzahl
+n.arx.X <- as.matrix(daily_neighborhood_train_nn[,c(3:28)])
+n.arx <- auto.arima(n.arx.Y, xreg = n.arx.X)
+n.arx
+
+non_seasonal_ar_order <- n.arx$arma[1] # p
+non_seasonal_ma_order <- n.arx$arma[2] # q
+seasonal_ar_order <- n.arx$arma[3]
+seasonal_ma_order <- n.arx$arma[4]
+period_of_data <- n.arx$arma[5]
+non_seasonal_diff_order <- n.arx$arma[6] #d
+seasonal_diff_order <- n.arx$arma[7]
+```
+
+LSTM
+
+```{r}
+######
+# LSTM
+
+# Hyperparameters
+ann.epochs    <- 100
+ann.batchsize <- 32
+ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
+ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
+
+# Transform y (= price) into stationary and create lagged dataset
+tsdiff <- as.data.frame(build_stationary(daily_neighborhood_train_nn$anzahl, k = ann.lags))
+'if (ann.lags > 0) {
+  tsdiff <- tsdiff[c(-1:-ann.lags),]
+  colnames(tsdiff) <- c("price_diff", "pdiff_lag1","pdiff_lag2","pdiff_lag3","pdiff_lag4")
+}'
+
+df.ann <- cbind.data.frame(daily_neighborhood_train_nn[c((ann.lags+1):nrow(daily_neighborhood_train_nn)),], tsdiff)
+df.ann <- df.ann[,c(1:4,45:49,5:44)]
+```
+
+
 
 
 #### cross validation
