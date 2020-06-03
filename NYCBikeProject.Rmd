@@ -2421,7 +2421,7 @@ graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions
 require(ggplot2)
 ggplot() +
   labs(title = "LSTM Forecasting for Bikeusers") +
-  xlab("Date") + ylab("Interest Rate") +
+  xlab("Date") + ylab("Bikeuser") +
   geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
   geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
   theme_bw() +
