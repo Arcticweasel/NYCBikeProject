@@ -1401,6 +1401,17 @@ saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
 hourly_starts_nh <- readRDS("Data/q1_starts_nh.RDS")
 ```
 
+```{r}
+#Trainingsdaten nur für Bezirk Chelsea
+hourly_chelsea_train <- hourly_starts_nh %>%
+  select(-month, -week) %>%
+  filter(neighborhood == "Chelsea") %>%
+  mutate(quarter = quarter(start_date),
+         start_datetime = make_datetime(year = year(start_date), month = month(start_date), 
+                                        day = day(start_date), hour = start_hour, min = 0, sec = 0))
+df <- df[, c(11,1:2,4,3,10,5:9)]
+```
+
 Um stationsgenaue Vorhersagen zu treffen, wird der Datenssatz hourly_starts ebenfalls weiter aufbereitet. Wie zuvor werden die Variablen Wochentag und Feiertag eingefügt, sowie die Wetterdaten hinzugefügt.
 
 ```{r, eval=FALSE, echo=TRUE}
@@ -1727,6 +1738,17 @@ saveRDS(hourly_test, "Data/q1_starts_test.RDS")
 hourly_test <- read_rds("Data/q1_starts_test.RDS")
 ```
 
+```{r}
+#Testdaten nur für Bezirk Chelsea
+hourly_chelsea_test <- hourly_test %>%
+  select(-month, -week) %>%
+  filter(neighborhood == "Chelsea") %>%
+  mutate(quarter = quarter(start_date),
+         start_datetime = make_datetime(year = year(start_date), month = month(start_date), 
+                                        day = day(start_date), hour = start_hour, min = 0, sec = 0))
+hourly_chelsea_test <- hourly_chelsea_test[, c(11,1:2,4,3,10,5:9)]
+```
+
 
 #### Aufbereitung Für Tägliche Analyse
 
@@ -1979,7 +2001,7 @@ test_q2_rmse
 
 Um ein künstliches neuornales Netz zu erhalten, das fehlerfrei läuft, müssen der Trainings- und Testdatensatz der stündlichen Fahrten noch weiter aufbereitet werden. Für die Spalten neighborhood, weekday, month, week und start_hour werden Dummyvariablen erstellt. Dies ist notwendig, da es sich um kategoriale Variablen handelt. Da eine reine Quantifizerung der Variablen durch hohe Zahlenwerte für einige Kategorein eine Verzerrung der Analysen zur Folge hätte, werden binäre Variblen für jede Kategorie erstellt, die die Werte 0 und 1 annehmen. Um bei der späteren Anwendung der künstlichen neuronalen Netze keine Fehler zu produzieren, werden die Dummys effektkodiert. Statt des Wertes 0 wird der Wert -1 genutzt.
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 #Dummyvariablen erstellen
 hourly_starts_nh <- dummy_cols(hourly_starts_nh, c("start_hour", "neighborhood", "weekday", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
 hourly_test <- dummy_cols(hourly_test, c("start_hour", "neighborhood", "weekday", "month", "week"), remove_first_dummy = T, remove_selected_columns = T)
@@ -1995,6 +2017,15 @@ hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(3, 7:105)])
 
 ```
 
+```{r}
+hourly_chelsea_train <- dummy_cols(hourly_chelsea_train, c("start_hour", "weekday", "quarter"), remove_first_dummy = T, remove_selected_columns = T)
+names(hourly_chelsea_train) <- str_replace_all(names(hourly_chelsea_train), c(" " = "_"))
+hourly_chelsea_train[,c(5, 9:40)] <- effectcoding(hourly_chelsea_train[,c(5, 9:40)])
+
+hourly_chelsea_test <- dummy_cols(hourly_chelsea_test, c("start_hour", "weekday", "quarter"), remove_first_dummy = T, remove_selected_columns = T)
+names(hourly_chelsea_test) <- str_replace_all(names(hourly_chelsea_test), c(" " = "_"))
+hourly_chelsea_test[,c(5, 9:40)] <- effectcoding(hourly_chelsea_test[,c(5, 9:40)])
+```
 
 #### Tägliche Daten Aufbereiten
 
@@ -2141,20 +2172,16 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 
 #### Long-Short Term Memory Netz für stündliche Daten Erstellen
 
-```{r}
-#Mit ARIMAX die optimale Anzahl der lags bestimmen
-arimax.Y <- as.numeric(hourly_starts_nh$user_count[1:10000])
-arimax.X <- as.matrix(hourly_starts_nh[1:10000,c(3:146)])
-hourly_arimax <- auto.arima(arimax.Y, xreg = arimax.X)
-arimax
+Aufgrund der Datenmenge und der nur begrenzt zur Verfügung stehenden Rechenkapazität wird exemplarisch für einen Bezirk ein LSTM erstellt.
 
-non_seasonal_ar_order <- arx$arma[1] # p
-non_seasonal_ma_order <- arx$arma[2] # q
-seasonal_ar_order <- arx$arma[3]
-seasonal_ma_order <- arx$arma[4]
-period_of_data <- arx$arma[5]
-non_seasonal_diff_order <- arx$arma[6] #d
-seasonal_diff_order <- arx$arma[7]
+```{r}
+#ARI für Bestiung der lags
+arimax.Y <- as.numeric(hourly_chelsea_train$user_count)
+arimax.X <- as.matrix(hourly_chelsea_train[,c(5:40)])
+hourly_arimax <- auto.arima(arimax.Y, xreg = arimax.X)
+hourly_arimax
+
+hourly_lags <- hourly_arimax$arma[1]
 
 ```
 
