@@ -20,6 +20,7 @@ library(lubridate)
 library(imputeTS)
 library(timeDate)
 library(fastDummies)
+library(keras)
 source("Routinen/ANNUtils.r")
 ```
 
@@ -2151,7 +2152,7 @@ daily_neighborhood_test <- test_data_q2 %>%
   filter(neighborhood == "Chelsea")
 
 
-
+daily_neighborhood_test$neighborhood <- NULL
 
 ```
 
@@ -2200,7 +2201,7 @@ daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday"
 names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_test_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-daily_neighborhood_test_nn[,c(11:21)] <- effectcoding(daily_neighborhood_test_nn[,c(11:21)])
+daily_neighborhood_test_nn[,c(11:20)] <- effectcoding(daily_neighborhood_test_nn[,c(11:20)])
 ```
 
 
@@ -2237,15 +2238,107 @@ ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
 
 # Transform y (= price) into stationary and create lagged dataset
 tsdiff <- as.data.frame(build_stationary(daily_neighborhood_train_nn$anzahl, k = ann.lags))
-'if (ann.lags > 0) {
+if (ann.lags > 0) {
   tsdiff <- tsdiff[c(-1:-ann.lags),]
-  colnames(tsdiff) <- c("price_diff", "pdiff_lag1","pdiff_lag2","pdiff_lag3","pdiff_lag4")
-}'
+  colnames(tsdiff) <- c("anzahl_diff", "adiff_lag1")
+}
 
-df.ann <- cbind.data.frame(daily_neighborhood_train_nn[c((ann.lags+1):nrow(daily_neighborhood_train_nn)),], tsdiff)
-df.ann <- df.ann[,c(1:4,45:49,5:44)]
+df.ann <- cbind.data.frame(daily_neighborhood_train_nn[c((ann.lags+2):nrow(daily_neighborhood_train_nn)),], tsdiff)
+df.ann <- df.ann[,c(1:2,29:30,3:28)]
 ```
 
+```{r}
+# Resampling stationary data because of exogenous variables for working with LSTM
+Y.resample <- resample.y(df.ann$anzahl_diff, ann.timesteps)
+X.resample <- resample.X(df.ann[,4:30], ann.timesteps)
+df.resample <- cbind.data.frame(Y.resample, X.resample)
+colnames(df.resample)[1] <- c("anzahl_diff")
+
+# Extend resampled data set with datehour information
+df.resample$datehour <- df.ann$start_date[(ann.timesteps):nrow(df.ann)]
+df.resample <- df.resample[,c(56, 1:55)]
+
+df.train    <- df.resample
+
+```
+
+Lets do the same for the test data
+
+```{r}
+tsdiff_t <- as.data.frame(build_stationary(daily_neighborhood_test_nn$anzahl, k = ann.lags))
+if (ann.lags > 0) {
+  tsdiff_t <- tsdiff_t[c(-1:-ann.lags),]
+  colnames(tsdiff_t) <- c("anzahl_diff", "adiff_lag1")
+}
+
+df.ann_t <- cbind.data.frame(daily_neighborhood_test_nn[c((ann.lags+2):nrow(daily_neighborhood_test_nn)),], tsdiff_t)
+df.ann_t <- df.ann_t[,c(1:2,21:22,3:20)]
+
+# Resampling stationary data because of exogenous variables for working with LSTM
+Y.resample <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
+X.resample <- resample.X(df.ann_t[,4:22], ann.timesteps)
+df.resample <- cbind.data.frame(Y.resample, X.resample)
+colnames(df.resample)[1] <- c("anzahl_diff")
+
+# Extend resampled data set with datehour information
+df.resample$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
+df.resample <- df.resample[,c(40, 1:39)]
+
+df.test     <- df.resample
+
+```
+
+
+```{r}
+test.start <- as.POSIXct("2020-02-04")
+
+# Store origin y values as well as the prior y value of the first test y value
+y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_date >= test.start)] # origin interest rates
+y_prior_first_test <- daily_neighborhood_test_nn$anzahl[which(daily_neighborhood_test_nn$start_date == test.start)-1] # for invert differencing
+
+
+# Normalize training and test data sets excluding datehour and dummy-variables
+selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1", "avg_tripduration_1", "avg_age_1",
+                                                  "maximum.temperature_1", "minimum.temperature_1", "average.temperature_1",
+                                                  "precipitation_1", "snow.fall_1", "snow.depth_1",
+                                                  "adiff_lag1_2", "avg_tripduration_2", "avg_age_2", "maximum.temperature_2",
+                                                  "minimum.temperature_2", "average.temperature_2", "precipitation_2", "snow.fall_2",
+                                                  "snow.depth_2"
+                                                  ))
+nd <- normalize_data(df.train[,selected_columns], df.test[,selected_columns])
+
+
+df.train.norm <- df.train
+df.train.norm[, selected_columns] <- nd$train
+df.train.norm <- df.train.norm[,-1]
+
+
+
+df.test.norm <- df.test
+df.test.norm[, selected_columns] <- nd$test
+df.test.norm <- df.test.norm[,-1]
+
+
+# Extract X and Y data
+X.train <- df.train.norm[,-1]
+Y.train <- df.train.norm[,1]
+
+X.test <- df.test.norm[,-1]
+Y.test <- df.test.norm[,1]
+
+# Build and fit LSTM model using k-fold cross validation
+lstm <- fit_lstm(X = X.train, y = Y.train,
+                 timesteps = ann.timesteps,
+                 epochs = ann.epochs,
+                 batchsize = c(NA,ann.batchsize),
+                 k.fold = 4, k.optimizer = "min",
+                 hidden = data.frame(c(128,64,32),c("relu")),
+                 output_activation = "linear",
+                 stateful = F, return_sequences = T,
+                 loss = "mean_squared_error",
+                 optimizer = "adam",
+                 metrics = c('mean_absolute_error'))
+```
 
 
 
