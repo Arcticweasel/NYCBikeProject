@@ -2167,6 +2167,19 @@ summary(lin_reg_daily_neighborhood)
 
 ```
 
+```{r}
+#Vorhersage mit Testdaten
+lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
+
+test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
+test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
+test_q2_mse
+test_q2_rmse
+```
+
+
+
+
 TrainDaten fürs LSTM Vorbereiten
 
 ```{r}
@@ -2195,22 +2208,35 @@ daily_neighborhood_test_nn <- daily_neighborhood_test
 
 # Wegen gleichheit tricksen
 
-daily_neighborhood_train_nn
 
+
+
+
+df_addrows <- data.frame(start_date= as_date(c("2017-01-01", "2017-03-01", "2017-04-01", "2017-06-01", "2017-07-01", "2017-09-01", "2017-10-01", "2017-12-01")), anzahl = c(NA,NA,NA,NA,NA,NA,NA,NA), avg_tripduration = c(NA,NA,NA,NA,NA,NA,NA,NA), avg_age = c(NA,NA,NA,NA,NA,NA,NA,NA), maximum.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), minimum.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), average.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), precipitation = c(NA,NA,NA,NA,NA,NA,NA,NA), snow.fall = c(NA,NA,NA,NA,NA,NA,NA,NA), snow.depth = c(NA,NA,NA,NA,NA,NA,NA,NA), weekday = c("Montag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag"), holiday = c(NA,NA,NA,NA,NA,NA,NA,NA), month = c("Januar", "März", "April", "Juni", "Juli", "September", "Oktober", "Dezember"))
+
+
+
+daily_neighborhood_test_nn <- rbind(daily_neighborhood_test_nn, df_addrows)
+
+daily_neighborhood_test_nn <- daily_neighborhood_test_nn %>% arrange(start_date)
 
 #Dummyvariablen erstellen
 
 
 
-daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday", "month"), remove_first_dummy = T, remove_selected_columns = T)
+daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday", "month"), remove_first_dummy = F, remove_selected_columns = T)
 
+daily_neighborhood_test_nn <- na.omit(daily_neighborhood_test_nn)
+daily_neighborhood_test_nn$month_Januar <- NULL
+daily_neighborhood_test_nn$weekday_Montag <- NULL
 
+daily_neighborhood_test_nn <- daily_neighborhood_test_nn[,c(1:12,15,13,14,16:17,21,25,18,24,23,22,19,28,27,26,20 ) ]
 
 #Namen der Dummys bearbeiten
 names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_test_nn), c(" " = "_"))
 
 #Dummys effektkodieren
-daily_neighborhood_test_nn[,c(11:20)] <- effectcoding(daily_neighborhood_test_nn[,c(11:20)])
+daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn[,c(11:28)])
 ```
 
 
@@ -2281,17 +2307,17 @@ if (ann.lags > 0) {
 }
 
 df.ann_t <- cbind.data.frame(daily_neighborhood_test_nn[c((ann.lags+2):nrow(daily_neighborhood_test_nn)),], tsdiff_t)
-df.ann_t <- df.ann_t[,c(1:2,21:22,3:20)]
+df.ann_t <- df.ann_t[,c(1:2,29:30,3:28)]
 
 # Resampling stationary data because of exogenous variables for working with LSTM
 Y.resample <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
-X.resample <- resample.X(df.ann_t[,4:22], ann.timesteps)
+X.resample <- resample.X(df.ann_t[,4:30], ann.timesteps)
 df.resample <- cbind.data.frame(Y.resample, X.resample)
 colnames(df.resample)[1] <- c("anzahl_diff")
 
 # Extend resampled data set with datehour information
 df.resample$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
-df.resample <- df.resample[,c(40, 1:39)]
+df.resample <- df.resample[,c(56, 1:55)]
 
 df.test     <- df.resample
 
@@ -2299,7 +2325,7 @@ df.test     <- df.resample
 
 
 ```{r}
-test.start <- as.POSIXct("2020-02-04")
+test.start <- as.POSIXct("2017-02-04")
 
 # Store origin y values as well as the prior y value of the first test y value
 y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_date >= test.start)] # origin interest rates
@@ -2388,6 +2414,21 @@ testseries <- testseries[-NROW(testseries)]
 predictions <- invert_differencing(predictiondiff, testseries)
 ## RMSE
 rmse(testseries, predictions)
+
+
+# Plot test and forecast values
+graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
+require(ggplot2)
+ggplot() +
+  labs(title = "LSTM Forecasting for Bikeusers") +
+  xlab("Date") + ylab("Interest Rate") +
+  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
 ```
 
 
