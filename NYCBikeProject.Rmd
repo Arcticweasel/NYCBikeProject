@@ -2193,9 +2193,18 @@ TestDaten fürs LSTM vorbereiten
 
 daily_neighborhood_test_nn <- daily_neighborhood_test
 
+# Wegen gleichheit tricksen
+
+daily_neighborhood_train_nn
+
+
 #Dummyvariablen erstellen
 
+
+
 daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday", "month"), remove_first_dummy = T, remove_selected_columns = T)
+
+
 
 #Namen der Dummys bearbeiten
 names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_test_nn), c(" " = "_"))
@@ -2305,7 +2314,7 @@ selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1",
                                                   "minimum.temperature_2", "average.temperature_2", "precipitation_2", "snow.fall_2",
                                                   "snow.depth_2"
                                                   ))
-nd <- normalize_data(df.train[,selected_columns], df.test[,selected_columns])
+nd <- normalize_data(df.train[,selected_columns], df.test[,c(2:11,22:30)])
 
 
 df.train.norm <- df.train
@@ -2338,6 +2347,47 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
                  loss = "mean_squared_error",
                  optimizer = "adam",
                  metrics = c('mean_absolute_error'))
+```
+
+```{r}
+average_mae_history <- lstm$avg_qual
+
+require(ggplot2)
+ggplot(average_mae_history, aes(x = epoch, y = validation_qual)) +
+  labs(title = "LSTM: validation scores (MAE) per each epoch") +
+  xlab("Epoch") + ylab("Validation score") +
+  geom_line(color = "darkblue") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
+  labs(title = "LSTM: validation scores (MAE) per each epoch") +
+  xlab("Epoch") + ylab("Validation score") +
+  geom_smooth(color = "darkblue") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
+```
+
+
+
+```{r}
+# Forecast and quality
+## Predict price differences
+lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
+predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
+predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
+## invert differencing
+testseries <- c(y_prior_first_test, y_test)
+testseries <- testseries[-NROW(testseries)]
+predictions <- invert_differencing(predictiondiff, testseries)
+## RMSE
+rmse(testseries, predictions)
 ```
 
 
