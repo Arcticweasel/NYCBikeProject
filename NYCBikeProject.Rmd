@@ -21,6 +21,7 @@ library(imputeTS)
 library(timeDate)
 library(fastDummies)
 library(forecast)
+library(keras)
 source("Routinen/ANNUtils.r")
 ```
 
@@ -1409,7 +1410,7 @@ hourly_chelsea_train <- hourly_starts_nh %>%
   mutate(quarter = quarter(start_date),
          start_datetime = make_datetime(year = year(start_date), month = month(start_date), 
                                         day = day(start_date), hour = start_hour, min = 0, sec = 0))
-df <- df[, c(11,1:2,4,3,10,5:9)]
+hourly_chelsea_train <- hourly_chelsea_train[, c(11,1:2,4,3,10,5:9)]
 ```
 
 Um stationsgenaue Vorhersagen zu treffen, wird der Datenssatz hourly_starts ebenfalls weiter aufbereitet. Wie zuvor werden die Variablen Wochentag und Feiertag eingefügt, sowie die Wetterdaten hinzugefügt.
@@ -1947,6 +1948,23 @@ lin_reg_q1 <- lm(model_q1, hourly_starts)
 
 Da der Datensatz in bearbeiteter Form mehrere Gigabyte groß ist, kann keine Analyse durchgeführt werden. Nachfolgend wird ausschließlich der Datebsatz auf Bezirksebene betrachtet.
 
+```{r}
+#Regression mit Chelsea
+hourly_chelsea_model <- as.formula(user_count ~ start_date + start_hour + quarter + holiday + weekday + temp + wdsp + precip)
+hourly_chelsea_lin_reg <- lm(hourly_chelsea_model, hourly_chelsea_train)
+summary(hourly_chelsea_lin_reg)
+hourly_linreg_train_mse <- mean((hourly_chelsea_lin_reg$residuals)^2)
+hourly_linreg_train_rmse <- sqrt(mean((hourly_chelsea_lin_reg$residuals)^2))
+```
+
+```{r}
+#Vorhersage Testdaten mit Chelsea
+hourly_chelsea_lin_reg_predictions <- predict(hourly_chelsea_lin_reg, hourly_chelsea_test)
+hourly_linreg_test_mse <- mean((hourly_chelsea_test$user_count - hourly_chelsea_lin_reg_predictions) ^ 2)
+hourly_linreg_test_rmse <- sqrt(mean((hourly_chelsea_test$user_count - hourly_chelsea_lin_reg_predictions) ^ 2))
+```
+
+
 #### Tägliche Regression
 
 
@@ -2018,14 +2036,111 @@ hourly_test[,c(3, 7:105)] <- effectcoding(hourly_test[,c(3, 7:105)])
 ```
 
 ```{r}
+#Chelsea Trainingsdaten dummyfizieren und effektcodieren
 hourly_chelsea_train <- dummy_cols(hourly_chelsea_train, c("start_hour", "weekday", "quarter"), remove_first_dummy = T, remove_selected_columns = T)
 names(hourly_chelsea_train) <- str_replace_all(names(hourly_chelsea_train), c(" " = "_"))
 hourly_chelsea_train[,c(5, 9:40)] <- effectcoding(hourly_chelsea_train[,c(5, 9:40)])
 
+#Chelsea Testdaten dummyfizieren und effektcodieren
 hourly_chelsea_test <- dummy_cols(hourly_chelsea_test, c("start_hour", "weekday", "quarter"), remove_first_dummy = T, remove_selected_columns = T)
 names(hourly_chelsea_test) <- str_replace_all(names(hourly_chelsea_test), c(" " = "_"))
 hourly_chelsea_test[,c(5, 9:40)] <- effectcoding(hourly_chelsea_test[,c(5, 9:40)])
 ```
+
+
+```{r}
+#ARIMAX für Bestimmung der lags mit Trainingsdaten
+hourly.arimax.Y <- as.numeric(hourly_chelsea_train$user_count)
+hourly.arimax.X <- as.matrix(hourly_chelsea_train[,c(5:40)])
+hourly_arimax <- auto.arima(hourly.arimax.Y, xreg = hourly.arimax.X)
+
+hourly_lags <- hourly_arimax$arma[1]
+
+hourly.ann.lags <- as.lags(hourly_lags, type = "multivariate")
+hourly.ann.timesteps <- as.timesteps(hourly.ann.lags, type = "multivariate")
+```
+
+
+```{r}
+#prepare train data mit gelaggtem y als x
+hourly_tsdiff <- as.data.frame(build_stationary(hourly_chelsea_train$user_count, k = hourly.ann.lags))
+if (hourly.ann.lags > 0) {
+  hourly_tsdiff <- hourly_tsdiff[c(-1:-hourly.ann.lags),]
+  colnames(hourly_tsdiff) <- c("user_count_diff", "user_count_diff_lag1","user_count_diff_lag2",
+                        "user_count_diff_lag3", "user_count_diff_lag4","user_count_diff_lag5")
+}
+
+hourly.df.ann <- cbind.data.frame(hourly_chelsea_train[c((hourly.ann.lags+2):nrow(hourly_chelsea_train)),], hourly_tsdiff)
+hourly.df.ann <- hourly.df.ann[,c(1,3:4,41:46,5:40)]
+
+hourly.Y.train.resample <- resample.y(hourly.df.ann$user_count_diff, hourly.ann.timesteps)
+hourly.X.train.resample <- resample.X(hourly.df.ann[,5:45], hourly.ann.timesteps)
+hourly.df.resample <- cbind.data.frame(hourly.Y.train.resample, hourly.X.train.resample)
+colnames(hourly.df.resample)[1] <- c("user_count_diff")
+
+hourly.df.resample$start_datetime <- hourly.df.ann$start_datetime[(hourly.ann.timesteps):nrow(hourly.df.ann)]
+hourly.df.resample <- hourly.df.resample[,c(248, 1:247)]
+
+#prepare test data mit gelaggtem y als x
+hourly_tsdiff_test <- as.data.frame(build_stationary(hourly_chelsea_test$user_count, k = hourly.ann.lags))
+if (hourly.ann.lags > 0) {
+  hourly_tsdiff_test <- hourly_tsdiff_test[c(-1:-hourly.ann.lags),]
+  colnames(hourly_tsdiff_test) <- c("user_count_diff", "user_count_diff_lag1","user_count_diff_lag2",
+                        "user_count_diff_lag3", "user_count_diff_lag4","user_count_diff_lag5")
+}
+
+hourly.df.ann.test <- cbind.data.frame(hourly_chelsea_test[c((hourly.ann.lags+2):nrow(hourly_chelsea_test)),], hourly_tsdiff_test)
+hourly.df.ann.test <- hourly.df.ann.test[,c(1,3:4,41:46,5:40)]
+
+hourly.Y.test.resample <- resample.y(hourly.df.ann.test$user_count_diff, hourly.ann.timesteps)
+hourly.X.test.resample <- resample.X(hourly.df.ann.test[,5:45], hourly.ann.timesteps)
+hourly.df.resample.test <- cbind.data.frame(hourly.Y.test.resample, hourly.X.test.resample)
+colnames(hourly.df.resample.test)[1] <- c("user_count_diff")
+
+hourly.df.resample.test$start_datetime <- hourly.df.ann.test$start_datetime[(hourly.ann.timesteps):nrow(hourly.df.ann.test)]
+hourly.df.resample.test <- hourly.df.resample.test[,c(248, 1:247)]
+
+
+hourly.df.train <- hourly.df.resample
+hourly.df.test <- hourly.df.resample.test
+```
+
+```{r}
+#store original y values for later re-resampling
+hourly_y_test <- hourly_chelsea_test$user_count[12:NROW(hourly_chelsea_test)]
+hourly_y_prior_first_test <- hourly_chelsea_test$user_count[11]
+```
+
+```{r}
+#normalize data
+hourly_selected_columns <- which(colnames(hourly.df.train)%in%c("user_count_diff",
+                                                  "temp_1","wdsp_1","precip_1","user_count_diff_lag1_1","user_count_diff_lag2_1","user_count_diff_lag3_1","user_count_diff_lag4_1","user_count_diff_lag5_1",
+                                                  "temp_2","wdsp_2","precip_2","user_count_diff_lag1_2","user_count_diff_lag2_2","user_count_diff_lag3_2","user_count_diff_lag4_2","user_count_diff_lag5_2",
+                                                  "temp_3","wdsp_3","precip_3","user_count_diff_lag1_3","user_count_diff_lag2_3","user_count_diff_lag3_3","user_count_diff_lag4_3","user_count_diff_lag5_3",
+                                                  "temp_4","wdsp_4","precip_4","user_count_diff_lag1_4","user_count_diff_lag2_4","user_count_diff_lag3_4","user_count_diff_lag4_4","user_count_diff_lag5_4",
+                                                  "temp_5","wdsp_5","precip_5","user_count_diff_lag1_5","user_count_diff_lag2_5","user_count_diff_lag3_5","user_count_diff_lag4_5","user_count_diff_lag5_5",
+                                                  "temp_6","wdsp_6","precip_6","user_count_diff_lag1_6","user_count_diff_lag2_6","user_count_diff_lag3_6","user_count_diff_lag4_6","user_count_diff_lag5_6"))
+
+hourly_nd <- normalize_data(hourly.df.train[,hourly_selected_columns], hourly.df.test[,hourly_selected_columns])
+
+hourly.df.train.norm <- hourly.df.train
+hourly.df.train.norm[,hourly_selected_columns] <- hourly_nd$train
+hourly.df.train.norm <- hourly.df.train.norm[,-1]
+
+hourly.df.test.norm <- hourly.df.test
+hourly.df.test.norm[,hourly_selected_columns] <- hourly_nd$test
+hourly.df.test.norm <- hourly.df.test.norm[,-1]
+```
+
+```{r}
+#set train and test data
+hourly.X.train <- hourly.df.train.norm[,-1]
+hourly.Y.train <- hourly.df.train.norm[,1]
+
+hourly.X.test <- hourly.df.test.norm[,-1]
+hourly.Y.test <- hourly.df.test.norm[,1]
+```
+
 
 #### Tägliche Daten Aufbereiten
 
@@ -2175,15 +2290,65 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 Aufgrund der Datenmenge und der nur begrenzt zur Verfügung stehenden Rechenkapazität wird exemplarisch für einen Bezirk ein LSTM erstellt.
 
 ```{r}
-#ARI für Bestiung der lags
-arimax.Y <- as.numeric(hourly_chelsea_train$user_count)
-arimax.X <- as.matrix(hourly_chelsea_train[,c(5:40)])
-hourly_arimax <- auto.arima(arimax.Y, xreg = arimax.X)
-hourly_arimax
-
-hourly_lags <- hourly_arimax$arma[1]
-
+#restliche hyperparameter setzen
+hourly.ann.epochs    <- 120
+hourly.ann.batchsize <- 1
 ```
+
+```{r, eval=F, echo=TRUE}
+#stündliches lstm
+hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
+                 timesteps = hourly.ann.timesteps,
+                 validation_split = 0.05,
+                 epochs = hourly.ann.epochs,
+                 batchsize = c(NA,hourly.ann.batchsize),
+                 #k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(50,25),c("tanh")),
+                 dropout = c(0.5,0.1),
+                 output_activation = "linear",
+                 stateful = F, return_sequences = T,
+                 loss = "mean_squared_error",
+                 optimizer = "Ftrl",
+                 metrics = c('mean_absolute_error'))
+
+saveRDS(hourly_lstm, "hourly_lstm_chelsea.RDS")
+```
+
+```{r}
+#muss anderes format sein!!
+hourly_lstm <- read_rds("hourly_lstm_chelsea.RDS")
+```
+
+```{r}
+# Predict user differences
+hourly.lstm.X.test <- as.LSTM.X(hourly.X.test, hourly.ann.timesteps)
+hourly.predictiondiff <- hourly_lstm$model %>% predict(hourly.lstm.X.test, batch_size = hourly.ann.batchsize)
+hourly.predictiondiff <- denormalize(hourly.predictiondiff[,1], hourly_nd$min[1], hourly_nd$max[1])
+
+# invert differencing
+hourly_testseries <- c(hourly_y_prior_first_test, hourly_y_test)
+hourly_testseries <- hourly_testseries[-NROW(hourly_testseries)]
+hourly_predictions <- invert_differencing(hourly.predictiondiff, hourly_testseries)
+
+# RMSE
+hourly_lstm_rmse <- rmse(hourly_testseries, hourly_predictions)
+```
+
+```{r}
+hourly_graphdata <- data.frame(Date = hourly.df.test$start_datetime, Value = hourly_testseries, Predictions = hourly_predictions)
+ggplot() +
+  labs(title = "LSTM Forecast For Hourly Bike User Count") +
+  xlab("Date") + ylab("User Count") +
+  geom_line(data = graphdata, aes(y = Value, x = Date), color = "black") +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "cadetblue") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(df.test$start_datetime, label = T, abbr = F), scales = "free_x")
+```
+
 
 Als erstes werden die Daten neu aggregiert
 
