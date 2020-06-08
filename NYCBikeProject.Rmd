@@ -12,8 +12,6 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 ```
 
-# Load Packages
-
 ```{r, include=FALSE}
 library(tidyverse)
 library(lubridate)
