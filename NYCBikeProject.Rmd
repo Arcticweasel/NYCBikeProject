@@ -18,9 +18,9 @@ library(lubridate)
 library(imputeTS)
 library(timeDate)
 library(fastDummies)
-<<<<<<< HEAD
+
 library(keras)
-=======
+
 library(forecast)
 library(keras)
 library(ggplot2)
@@ -30,7 +30,7 @@ library(move)
 library(moveVis)
 
 
->>>>>>> 7f371128d9847ddd8ed7ffa39fabc2b4c6eb9f67
+
 source("Routinen/ANNUtils.r")
 
 theme_set(theme_classic())
@@ -1898,8 +1898,8 @@ lin_reg_q1_nh <- lm(model_q1_nh, hourly_starts_nh)
 anova(lin_reg_q1_nh)
 summary(lin_reg_q1_nh)
 
-linreg_q1_nh_train_mse <- mean((lin_reg_nh$residuals)^2)
-linreg_q1_nh_train_rmse <- sqrt(mean((lin_reg_nh$residuals)^2))
+linreg_q1_nh_train_mse <- mean((lin_reg_q1_nh$residuals)^2)
+linreg_q1_nh_train_rmse <- sqrt(mean((lin_reg_q1_nh$residuals)^2))
 
 linreg_q1_nh_train_rmse
 ```
@@ -2411,7 +2411,7 @@ ggplot() +
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.border = element_blank(),
         axis.line = element_line(colour = "black"))+
-  facet_wrap(month(df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
+  facet_wrap(month(hourly.df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
   scale_color_manual(name = "Legende", values = c("black" = "black", "cadetblue" = "cadetblue"), labels = c("Tatsächliche Nutzer", "LSTM Vorhersage"))
 ```
 
@@ -2429,12 +2429,10 @@ daily_neighborhood_train$neighborhood <- NULL
 daily_neighborhood_test <- test_data_q2 %>%
   filter(neighborhood == "Chelsea")
 
-<<<<<<< HEAD
 
 daily_neighborhood_test$neighborhood <- NULL
 
-=======
->>>>>>> 7f371128d9847ddd8ed7ffa39fabc2b4c6eb9f67
+
 ```
 
 Regression
@@ -2548,7 +2546,7 @@ LSTM
 
 # Hyperparameters
 ann.epochs    <- 100
-ann.batchsize <- 32
+ann.batchsize <- 20
 ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
 ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
 
@@ -2652,8 +2650,10 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
                  output_activation = "linear",
                  stateful = F, return_sequences = T,
                  loss = "mean_squared_error",
-                 optimizer = "adam",
+                 optimizer = "Ftrl",
                  metrics = c('mean_absolute_error'))
+
+
 ```
 
 ```{r}
@@ -2739,7 +2739,7 @@ ggplot() +
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.border = element_blank(),
         axis.line = element_line(colour = "black"))+
-  facet_wrap(month(df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
+  facet_wrap(month(hourly.df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
   scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
 ```
 
