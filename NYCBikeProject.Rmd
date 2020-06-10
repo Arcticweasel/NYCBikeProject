@@ -1102,7 +1102,7 @@ Einmal Stations als points definieren und in einen spatial polygon dataframe umf
 # load stations as points
 
 points <- stations %>%
-  select(start_station_longitude.x, start_station_latitude.x, totalusers)
+  dplyr::select(start_station_longitude.x, start_station_latitude.x, totalusers)
 
 points$start_station_name <- as.factor(points$start_station_name)
 
@@ -1464,7 +1464,7 @@ Aggregation eines DAtensatzes mit Neighborhoods
 
 ```{r}
 points1 <- points %>%
-  select(start_station_name, start_station_latitude.x, start_station_longitude.x, neighborhood)
+  dplyr::select(start_station_name, start_station_latitude.x, start_station_longitude.x, neighborhood)
 
 q2_starts_w <- left_join(q2_starts_w, points1, by = c("start_station_name"="start_station_name",
                            "start_station_latitude.x"="start_station_latitude.x",
@@ -1652,7 +1652,7 @@ stations_2017 <- cbind(stations_2017, matches)
 
 # Nur die Spalten behalten, die weiterhin wichtig sind
 stations_2017 <- stations_2017 %>%
-  select(start_station_name, start_station_latitude, start_station_longitude, neighborhood)
+  dplyr::select(start_station_name, start_station_latitude, start_station_longitude, neighborhood)
 
 # Nicht mehr benötige Objekte entfernen
 rm(nyc_neighborhoods, points_spdf, matches)
