@@ -2749,6 +2749,9 @@ ggplot() +
 
 Abschließend lassen sich beide Forschungsfragen zufriedenstellend beantworten. Sowohl tägliche, als auch stündliche Nutzerzahlen können mit Hilfe eines künstlichen neuronalen Netzes zuverlässig vorausgesagt werden. Dies ist bisher nur für einen Bezirk erfolgt, lässt sich aber auf alle anderen Bezirke, sowie Stationen übertragen. So kann eine genaue Vorhersage der Nutzerzahlen zur besseren Ressourcenplanung genutzt und die Kundenzufriedenheit gesteigert werden.
 
+Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke die Vorhersagen trifft.
+
+
 
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
