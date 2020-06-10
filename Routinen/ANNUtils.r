@@ -292,7 +292,7 @@ resample.X <- function(X, timesteps, sep = "_") {
   n <- nrow(df) - timesteps + 1
   dflist <- list()
   for (i in 1:n) {
-    dflist[[i]] <- matrix(t(df[i:(i+timesteps-1),]), nrow = 1)
+    dflist[[i]] <- matrix(t(df[(i+timesteps-1):i,]), nrow = 1)
   }
   res <- do.call(rbind, dflist)  
   colnames(res) <- newnames
@@ -336,7 +336,8 @@ as.MLP.X <- function(X){
 }
 
 as.MLP.Y <- function(y){
-  Y.tensor <- as.matrix(y)
+  ifelse (is.factor(y), Y.tensor <- as.integer(y)-1, Y.tensor <- y)
+  Y.tensor <- as.matrix(Y.tensor)
   return(Y.tensor)
 }
 
@@ -353,11 +354,11 @@ build_mlp <- function(features, hidden = NULL, dropout = NULL, output = c(1,"lin
     N <- NROW(h)
     # First hidden layer
     mlp_model %>% layer_dense(units = h[1,1], activation = h[1,2], input_shape = features)
-    # Further hidden layers
-    i <- 1 # hidden layers
     d <- 1 # dropout layers to prevent overfitting
     D <- ifelse(!(is.null(dropout)),NROW(dropout),0)
     if (D > 0) {mlp_model %>% layer_dropout(rate = dropout[d]); d <- d + 1}
+    # Further hidden layers
+    i <- 1 # hidden layers
     while (i < N) {
       mlp_model %>% layer_dense(units = h[i+1,1], activation = h[i+1,2])
       i <- i + 1
@@ -492,8 +493,9 @@ as.LSTM.X <- function(X, timesteps){
 }
 
 as.LSTM.Y <- function(y){
-  Y.tensor <- as.matrix(y)
-  output_units <- as.integer(NCOL(y)) # Number of output units
+  ifelse (is.factor(y), Y.tensor <- as.integer(y)-1, Y.tensor <- y)
+  Y.tensor <- as.matrix(Y.tensor)
+  output_units <- as.integer(NCOL(Y.tensor)) # Number of output units
   Y.tensor <- array(data = Y.tensor, dim = c(NROW(Y.tensor), output_units))
   return(Y.tensor)
 }
@@ -501,7 +503,7 @@ as.LSTM.Y <- function(y){
 # Build LSTM architecture
 # Univariate time series  : usually stateful = T and batchsize = 1; return_sequences = F
 # Multivariate time series: usually stateful = F and batchsize = NULL; return_sequences = T
-build_lstm <- function(features, timesteps = 1, batchsize = NA, hidden, output = c(1,"linear"), 
+build_lstm <- function(features, timesteps = 1, batchsize = NA, hidden, dropout = NULL, output = c(1,"linear"), 
                        stateful = FALSE, return_sequences = TRUE,
                        loss, optimizer, metrics) {
   lstm_model <- keras_model_sequential()
@@ -515,12 +517,16 @@ build_lstm <- function(features, timesteps = 1, batchsize = NA, hidden, output =
   } else {
     lstm_model %>% layer_lstm(units = h[1,1], batch_input_shape = c(batchsize, timesteps, features), activation = h[1,2], stateful = stateful, return_sequences = rs)
   }
+  d <- 1 # dropout layers to prevent overfitting
+  D <- ifelse(!(is.null(dropout)),NROW(dropout),0)
+  if (D > 0) {lstm_model %>% layer_dropout(rate = dropout[d]); d <- d + 1}
   # Further hidden layers
   i <- 1
   while (i < N) {
     if ((i == (N-1)) && (rs == T)) {rs <- !rs}
     lstm_model %>% layer_lstm(units = h[i+1,1], activation = h[i+1,2], stateful = stateful, return_sequences = rs)
     i <- i + 1
+    if (d <= D) {lstm_model %>% layer_dropout(rate = dropout[d]); d <- d + 1}
   }
   # Output layer
   lstm_model %>% layer_dense(units = output[1], activation = output[2])
@@ -532,7 +538,7 @@ build_lstm <- function(features, timesteps = 1, batchsize = NA, hidden, output =
 # Fit LSTM model
 fit_lstm <- function(X, y, timesteps = 1, epochs = 100, batchsize = c(NA,1), validation_split = 0.2,
                      k.fold = NULL, k.optimizer = NULL,
-                     hidden, output_activation = "linear", stateful = FALSE, return_sequences = TRUE,
+                     hidden, dropout = NULL, output_activation = "linear", stateful = FALSE, return_sequences = TRUE,
                      loss, optimizer, metrics) {
   l <- list() # result
   l_names <- c("hyperparameter","model","avg_qual")
@@ -554,6 +560,7 @@ fit_lstm <- function(X, y, timesteps = 1, epochs = 100, batchsize = c(NA,1), val
                              timesteps = timesteps,
                              batchsize = batchsize[1],
                              hidden = hidden,
+                             dropout = dropout,
                              output = c(ann.output_units, output_activation),
                              stateful = stateful,
                              return_sequences = return_sequences,
