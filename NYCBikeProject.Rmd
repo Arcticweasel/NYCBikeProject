@@ -1122,7 +1122,7 @@ matches <- over(points_spdf, nyc_neighborhoods)
 points <- cbind(points, matches)
 ```
 
-Einmal die Karte angucken mit leaflet und eingetrgenene Stationen und Neighborhoods mit den Nutzerzahlen
+Einmal die Karte angucken mit leaflet und eingetragenene Stationen und Neighborhoods mit den Nutzerzahlen
 
 
 ```{r}
@@ -1166,7 +1166,7 @@ addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totaluser
 ```
 
 
-Eine Karte mit Stationen ohne NEighborhoods aber mit einfärbung der Stationen nach Nutzerzahlen
+Eine Karte mit Stationen ohne Neighborhoods aber mit Einfärbung der Stationen nach Nutzerzahlen
 
 
 ```{r}
@@ -1227,9 +1227,10 @@ basemap %>%
 
 ?addMinicharts
 ```
+Bei der Animation animiert er nur den ersten Tag und danach keinen weiteren Tag. Problem wurde in der nächsten Animation durch andere Aggregation gelöst.
 
 
-Neuer versuch mit Daten die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einnen anderen Datensatz.
+Neuer versuch mit Daten die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einen anderen Datensatz.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1273,6 +1274,8 @@ newTest_agg <- newTest %>%
 
 saveRDS(newTest_agg, "Data/newTest_agg.rds")
 ```
+
+Diese Daten speichere ich in einer RDS und LAde sie wieder damit ich den Codechunk nicht immer ausführen muss.
 
 Load Data
 
@@ -1452,20 +1455,16 @@ hourly_chelsea_train <- hourly_chelsea_train[, c(11,1:2,4,3,10,5:9)]
 
 ### Tägliche Daten
 
-Als erstes den Datensatz mit dem Wetter joinen. Dazu bennen wir die Datumsspalte gleich in beiden Datenframes.
+Als erstes den Datensatz mit dem Wetter Datensatz joinen um einen Vollständigen Datensatz zu kriegen. Dazu benennen wir die Datums-spalte in beiden Datenframes gleich und joinen sie mit einem Leftjoin.
 
 ```{r}
-q2_starts <- q2_starts %>%
-  rename(
-    date = date_start
-  )
 
-q2_starts_w <- left_join(q2_starts, weather, by = "date")
+q2_starts_w <- left_join(q2_starts, weather, by = c("date_start" = "date"))
 
 
 ```
 
-Aggregation eines DAtensatzes mit Neighborhoods
+Aggregation eines Datensatzes mit Neighborhoods
 
 ```{r}
 points1 <- points %>%
@@ -1490,11 +1489,11 @@ Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Featu
 
 #Variable für Wochentag einfügen
 q2_starts_w <- q2_starts_w %>%
-  mutate(weekday = wday(date, abbr = F, label = T, week_start = 1))
+  mutate(weekday = wday(date_start, abbr = F, label = T, week_start = 1))
 q2_starts_w$weekday <- factor(q2_starts_w$weekday, ordered = FALSE)
 
 #Variable für Feiertag einfügen
-q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date), holidayNYSE(2016))==FALSE,1,0)
+q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date_start), holidayNYSE(2016))==FALSE,1,0)
 ```
 
 
@@ -1505,7 +1504,7 @@ apply(q2_starts_w, 2, function(x) sum(is.na(x)))
 ```
 
 
-Nicht brauchbare Spalten entfernen.
+Nicht brauchbare Spalten entfernen, Wochentag und Feiertag hinzufügen, Neighborhoods Spalte in Character umwandeln um Problemen vorzubeugen. Environment aufräumen und Monat und Wochentag als nicht geordnetet Factoren hinzufügen.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1522,10 +1521,11 @@ q2_starts_w2 <- q2_starts_w
 q2_starts_w$neighborhood <- NULL 
 
 q2_starts_w2_agg <- q2_starts_w2 %>%
-  group_by(date, neighborhood) %>%
-  summarise( anzahl = n(), avg_tripduration = mean(avg_tripduration), avg_age=mean(avr_age))
+  group_by(date_start, neighborhood) %>%
+  summarise( anzahl = sum(anzahl), avg_tripduration = mean(avg_tripduration), avg_age=mean(avr_age))
 
-
+q2_starts_w2_agg <- rename(q2_starts_w2_agg, 
+                           "date" = "date_start")
 
 q2_starts_w2_agg <- left_join(q2_starts_w2_agg, weather, by = "date")
 
@@ -1749,9 +1749,10 @@ hourly_chelsea_test <- hourly_chelsea_test[, c(11,1:2,4,3,10,5:9)]
 
 #### Aufbereitung Für Tägliche Analyse
 
+Um ein unsere Regression bzw. unser LSTM für unser Forschungsfrage zu überprüfen brauchen wir zusätzlich zu den Traininsdaten auch Testdaten. Diese sind von den Monaten Februar, Mai, August und November von 2017. Im nachfolgenden Codechunck werden diese Testdaten genauso aggregiert wie oben die Traininsdaten.
 
 ```{r, eval=FALSE, echo=TRUE}
-# Dataframe für aggregierte TEsdaten erstellen
+# Dataframe für aggregierte Tesdaten erstellen
 
 test_data_q2 <- test_data
 
@@ -2041,7 +2042,6 @@ test_q2_rmse <- sqrt(mean((test_data_q2$anzahl - lin_reg_q2_predictions) ^ 2))
 test_q2_mse
 test_q2_rmse
 ```
-
 
 
 
@@ -2447,6 +2447,8 @@ summary(lin_reg_daily_neighborhood)
 
 ```
 
+
+
 ```{r}
 #Vorhersage mit Testdaten
 lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
@@ -2457,6 +2459,21 @@ test_q2_mse
 test_q2_rmse
 ```
 
+```{r}
+daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
+ggplot() +
+  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
+  xlab("Date") + ylab("Anzahl") +
+  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
+  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
+```
 
 
 
