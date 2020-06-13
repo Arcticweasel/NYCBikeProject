@@ -28,7 +28,7 @@ library(gridExtra)
 library(geojsonio)
 library(move)
 library(moveVis)
-
+library(dplyr)
 
 
 source("Routinen/ANNUtils.r")
@@ -846,6 +846,7 @@ dev.off()
 ```
 
 ![Durchschnittliche_Nutzeranzahl_Pro_Wochentag](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png)
+![Durchschnittliche Fahrtdauer Pro Wochentag](Grafiken/Durchschnittliche_Fahrtdauer_Pro_Wochentag.png)
 
 Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
 Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
@@ -2402,7 +2403,7 @@ Der RMSE verändert sich geringfügig mit jedem Mal, das das Netz lernt, bewegt 
 # Visualisierung der Ergebnisse
 hourly_graphdata <- data.frame(Date = hourly.df.test$start_datetime, Value = hourly_testseries, Predictions = hourly_predictions, LinReg = hourly_chelsea_lin_reg_predictions[12:NROW(hourly_chelsea_lin_reg_predictions)])
 ggplot() +
-  labs(title = "LSTM Vorhersage Stündliche Nutzerzahlen") +
+  labs(title = "LSTM: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
   geom_line(data = hourly_graphdata, aes(y = Value, x = Date, color = "black")) +
   geom_line(data = hourly_graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
@@ -2764,11 +2765,9 @@ ggplot() +
 
 ## Ausblick
 
+Die Lösung für einen Bezirk ist zufriedenstellend. Um eine Lösung für alle Bezirke oder sogar alle Stationen zu erstellen, gibt es mehrere Möglichkeiten. Die erste Möglichkeit ist, für jeden Bezirk ein eigenes LSTM Netz zu erstellen, das ähnlich dem hier Vorgestellten aufgebaut ist. Dies kann analog auf Stationsebene erfolgen, da so das Problem der zu Großen Datenmengen in einer Rechenoperation umgangen wird. Des Weiteren ist es möglich nur ein künstliches neuronales Netz zu erstellen, das zeitgleich eine Vorhersage für alle Bezirke trifft. Hierfür muss das Vorgehen geringfügig angepasst werden. Ist in dem hier vorgestellten Netz die Target-Variable ein Vektor, so muss diese in einem gemeinsamen Netz eine Matrix sein, bestehend den Nutzerzahlen aller Bezirke. So entstehen mehrere Output-Units in einem Netz. Diese Lösung erfordert allerdings mehr Rechenleistung, als ein LSTM für nur einen Bezirk. Theoretisch ist dies auch auf Stationsebene möglich. Dies würde eine enorme Rechenleistung erfordern. Um dennoch eine Umsetzung zu ermöglichen, kann es sinnvoll sein eine Cloudplattform einzubinden. So wird genügend Rechenleistung zur Verfügung gestellt, um die entstehenden Datenmengen zielorientiert zu verarbeiten und eine zeitnahe Lösung zu gewährleisten.
+
 Abschließend lassen sich beide Forschungsfragen zufriedenstellend beantworten. Sowohl tägliche, als auch stündliche Nutzerzahlen können mit Hilfe eines künstlichen neuronalen Netzes zuverlässig vorausgesagt werden. Dies ist bisher nur für einen Bezirk erfolgt, lässt sich aber auf alle anderen Bezirke, sowie Stationen übertragen. So kann eine genaue Vorhersage der Nutzerzahlen zur besseren Ressourcenplanung genutzt und die Kundenzufriedenheit gesteigert werden.
-
-Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke die Vorhersagen trifft.
-
-
 
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
