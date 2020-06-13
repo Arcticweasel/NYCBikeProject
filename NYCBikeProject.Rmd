@@ -1223,8 +1223,6 @@ basemap %>%
   ) %>%
   setView(-73.98, 40.75, zoom = 13)
 
-
-?addMinicharts
 ```
 Bei der Animation animiert er nur den ersten Tag und danach keinen weiteren Tag. Problem wurde in der nächsten Animation durch andere Aggregation gelöst.
 
@@ -2018,7 +2016,7 @@ summary(lin_reg_q2)
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w2_agg
 options(max.print=450)
 model_q2_w2_agg <- as.formula(anzahl ~ .-start_date)
@@ -2030,7 +2028,7 @@ summary(lin_reg_q2_w2_agg)
 
 Prediction
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 
 #Vorhersage mit Testdaten
@@ -2332,9 +2330,8 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 
 ```
 
-### LSTM für ein Neighborhood
 
-#### Long Short Term Memory Netz für stündliche Daten Erstellen
+### Long Short Term Memory Netz für stündliche Daten Erstellen
 
 Bevor das Modell endgültig erstellt und Trainiert werden kann, werden die letzten Hyperparameter festgelegt. Nach sehr vielen Versuchen haben eine Batchsize von 1 und eine Epochenanzahl von 120 das beste Ergebnis erzielt.
 
