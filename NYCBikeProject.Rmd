@@ -2179,7 +2179,7 @@ hourly.df.test.norm[,hourly_selected_columns] <- hourly_nd$test
 hourly.df.test.norm <- hourly.df.test.norm[,-1]
 ```
 
-Sind die Daten normalisiert ist die Vorbereitung abgeschlossen und es können die Matrizen als Input für das neuronale Netz erstellt werden. X und Y-Variablen werden hierbei getrennt.
+Sind die Daten normalisiert ist die Vorbereitung abgeschlossen und es können die Matrizen als Input für das neuronale Netz erstellt werden. X- und Y-Variablen werden hierbei getrennt.
 
 ```{r}
 # Matrizen für Trainings- und Testdaten erstellen
@@ -2714,7 +2714,7 @@ testseries <- c(y_prior_first_test, y_test)
 testseries <- testseries[-NROW(testseries)]
 predictions <- invert_differencing(predictiondiff, testseries)
 ## RMSE
-rmse(testseries, predictions)
+daily_lstm_rmse <- rmse(testseries, predictions)
 
 
 # Plot test and forecast values
