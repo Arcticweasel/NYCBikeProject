@@ -241,7 +241,7 @@ basemap %>%
 
 ## Lineare Regression
 
-```{r, fig.align='center'}
+```{r, fig.align='center', fig.height=10, fig.width=8}
 ggplot() +
   labs(title = "Lineare Regression: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -289,7 +289,7 @@ hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
 - RMSE mit `r hourly_lstm_rmse` sehr niedrig
   - Durchschnittlicher Fehler von rund `r round(hourly_lstm_rmse)` Nutzern pro Stunde
 
-```{r, fig.align='center'}
+```{r, fig.align='center', fig.height=10, fig.width=8}
 ggplot() +
   labs(title = "LSTM: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -313,7 +313,7 @@ ggplot() +
   
 ## Modellvergleich
 
-```{r, fig.align='center'}
+```{r, fig.align='center', fig.height=10, fig.width=8}
 ggplot() +
   labs(title = "Vergleich Der Vorhersagen Für Stündliche Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -334,11 +334,98 @@ ggplot() +
 
 ## Tägliche Daten
 
+- Daten für den Bezirk Chelsea
+- Informationen über:
+  - Datum
+  - Anzahl der Nutzer
+  - Wochen- und Feiertag
+  - Monat
+  - Temperatur
+  - Niederschlagsmenge
+  - Schneefall und -tiefe
+  - Durchschnittliche Fahrtdauer und Alter der Nutzer
+  
+## Tägliche Daten
+
+![Überblick Datengrundlage Tägliche Daten](Presentation/Überblick_Chelsea_Täglich1.PNG)
+![](Presentation/Überblick_Chelsea_Täglich2.PNG)
+
 ## Lineare Regression
+
+- Alle Variablen mit einbezogen
+- Statistisch signifikant sind:
+  - Schneefall und -tiefe
+  - Feiertag
+  - Monate März-Juni
+- R-Quadrat mit 67.14% in Ordnung
+- RMSE nach Vorhersage mit Testdaten `r test_q2_rmse`
+  - Durchschnittlicher Fehler von rund `r round(test_q2_rmse)` Nutzer pro Tag
+  
+## Lineare Regression
+
+```{r, fig.align='center', fig.height=10, fig.width=8}
+ggplot() +
+  labs(title = "Lineare Regression: Vorhersage Täglicher Nutzerzahlen") +
+  xlab("Date") + ylab("Anzahl") +
+  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
+  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
+```
+
 
 ## Long Short Term Memory Netz
 
+- Einbeziehung aller Variablen außer Datum
+- Hyperparameter:
+  - Anzahl Epochen:   100 + k-fold cross validation
+  - Batchsize:         20     
+  - Anzahl Lags:        1
+  - Anzahl Timesteps:   2
+  
+## Long Short Term Memory Netz
+
+```{r,echo=TRUE, eval=FALSE}
+lstm <- fit_lstm(X = X.train, y = Y.train,
+                 timesteps = ann.timesteps,
+                 epochs = ann.epochs,
+                 batchsize = c(NA,ann.batchsize),
+                 k.fold = 4, k.optimizer = "min",
+                 hidden = data.frame(c(128,64,32),c("relu")),
+                 output_activation = "linear",
+                 stateful = F, return_sequences = T,
+                 loss = "mean_squared_error",
+                 optimizer = "Ftrl",
+                 metrics = c('mean_absolute_error'))
+```
+
+## Long Short Term Memory Netz
+
+- RMSE mit `r daily_lstm_rmse` niedrig
+  - Durchschnittlicher Fehler von rund `r round(daily_lstm_rmse)` Nutzern pro Tag
+  
+```{r, fig.align='center', fig.height=10, fig.width=8}
+#hier fehlt die Grafik für das LSTM
+```
+
+
 ## Modellvergleich
+
+- LSTM schneidet deutlich besser ab
+  - zufriedenstellende Prognose
+- RMSE der linearen Regression: `r round(test_q2_rmse)`
+- RMSE des LSTM Netzes: `r round(daily_lstm_rmse)`
+
+## Modellvergleich
+
+```{r, fig.align='center', fig.height=10, fig.width=8}
+#Hier fehlt die Grafik für den Modellvergleich
+```
 
 # Ausblick
 
@@ -359,5 +446,3 @@ ggplot() +
 - Problem der Rechenkapazität durch Cloud Computing lösbar
 
 # Vielen Dank Für Ihre Aufmerksamkeit!
-
-
