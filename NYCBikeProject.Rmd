@@ -2564,11 +2564,11 @@ seasonal_diff_order <- n.arx$arma[7]
 
 # Hyperparameters
 ann.epochs    <- 100
-ann.batchsize <- 10
+ann.batchsize <- 2
 ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
 ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
 
-# Transform y (= price) into stationary and create lagged dataset
+# Transform y (= anzahl) into stationary and create lagged dataset
 tsdiff <- as.data.frame(build_stationary(daily_neighborhood_train_nn$anzahl, k = ann.lags))
 if (ann.lags > 0) {
   tsdiff <- tsdiff[c(-1:-ann.lags),]
@@ -2607,18 +2607,23 @@ df.ann_t <- cbind.data.frame(daily_neighborhood_test_nn[c((ann.lags+2):nrow(dail
 df.ann_t <- df.ann_t[,c(1:2,29:30,3:28)]
 
 # Resampling stationary data because of exogenous variables for working with LSTM
-Y.resample <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
-X.resample <- resample.X(df.ann_t[,4:30], ann.timesteps)
-df.resample <- cbind.data.frame(Y.resample, X.resample)
-colnames(df.resample)[1] <- c("anzahl_diff")
+Y.resample_t <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
+X.resample_t <- resample.X(df.ann_t[,4:30], ann.timesteps)
+df.resample_t <- cbind.data.frame(Y.resample_t, X.resample_t)
+colnames(df.resample_t)[1] <- c("anzahl_diff")
 
 # Extend resampled data set with datehour information
-df.resample$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
-df.resample <- df.resample[,c(56, 1:55)]
+df.resample_t$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
+df.resample_t <- df.resample_t[,c(56, 1:55)]
 
-df.test     <- df.resample
+
+
+df.test     <- df.resample_t
 
 ```
+
+
+
 
 
 ```{r}
@@ -2629,6 +2634,7 @@ y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_da
 y_prior_first_test <- daily_neighborhood_test_nn$anzahl[which(daily_neighborhood_test_nn$start_date == test.start)-1] # for invert differencing
 
 
+
 # Normalize training and test data sets excluding datehour and dummy-variables
 selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1", "avg_tripduration_1", "avg_age_1",
                                                   "maximum.temperature_1", "minimum.temperature_1", "average.temperature_1",
@@ -2637,7 +2643,9 @@ selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1",
                                                   "minimum.temperature_2", "average.temperature_2", "precipitation_2", "snow.fall_2",
                                                   "snow.depth_2"
                                                   ))
-nd <- normalize_data(df.train[,selected_columns], df.test[,c(2:11,22:30)])
+nd <- normalize_data(df.train[,selected_columns], df.test[,selected_columns])   #  c(2:11,22:30)
+
+
 
 
 df.train.norm <- df.train
@@ -2649,6 +2657,8 @@ df.train.norm <- df.train.norm[,-1]
 df.test.norm <- df.test
 df.test.norm[, selected_columns] <- nd$test
 df.test.norm <- df.test.norm[,-1]
+
+
 
 
 # Extract X and Y data
@@ -2668,10 +2678,12 @@ Y.test <- df.test.norm[,1]
 # Build and fit LSTM model using k-fold cross validation
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
+                 validation_split = 0.05,
                  epochs = ann.epochs,
                  batchsize = c(NA,ann.batchsize),
-                 k.fold = 4, k.optimizer = "min",
-                 hidden = data.frame(c(128,64,32),c("relu")),
+                 #k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(50,25),c("tanh")),
+                 dropout = c(0.5,0.1),
                  output_activation = "linear",
                  stateful = F, return_sequences = T,
                  loss = "mean_squared_error",
@@ -2679,6 +2691,23 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
                  metrics = c('mean_absolute_error'))
 
 
+```
+
+
+```{r}
+hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
+                 timesteps = hourly.ann.timesteps,
+                 validation_split = 0.05,
+                 epochs = hourly.ann.epochs,
+                 batchsize = c(NA,hourly.ann.batchsize),
+                 #k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(50,25),c("tanh")),
+                 dropout = c(0.5,0.1),
+                 output_activation = "linear",
+                 stateful = F, return_sequences = T,
+                 loss = "mean_squared_error",
+                 optimizer = "Ftrl",
+                 metrics = c('mean_absolute_error'))
 ```
 
 
@@ -2744,20 +2773,25 @@ ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
 ```
 
 
-
 ```{r}
-# Forecast and quality
-## Predict price differences
+# Nutzerdifferenzen vorhersagen
 lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
 predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
 predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
-## invert differencing
+
+# Differenzierung rückgängig machen
 testseries <- c(y_prior_first_test, y_test)
 testseries <- testseries[-NROW(testseries)]
 predictions <- invert_differencing(predictiondiff, testseries)
-## RMSE
-daily_lstm_rmse <- rmse(testseries, predictions)
 
+# RMSE
+lstm_rmse <- rmse(testseries, predictions)
+lstm_rmse
+```
+
+
+
+```{r}
 
 # Plot test and forecast values
 graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
@@ -2774,33 +2808,7 @@ ggplot() +
         axis.line = element_line(colour = "black"))
 ```
 
-```{r}
-# Forecast and quality
-## Predict price differences
-lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
-predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
-predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
-## invert differencing
-testseries <- c(y_prior_first_test, y_test)
-testseries <- testseries[-NROW(testseries)]
-predictions <- invert_differencing(predictiondiff, testseries)
-## RMSE
-rmse(testseries, predictions)
 
-# Plot test and forecast values
-graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
-require(ggplot2)
-ggplot() +
-  labs(title = "LSTM Forecasting for Elecricity Prices") +
-  xlab("Date") + ylab("Interest Rate") +
-  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
-  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))
-```
 
 
 
