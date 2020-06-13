@@ -2560,7 +2560,7 @@ seasonal_diff_order <- n.arx$arma[7]
 # LSTM
 
 # Hyperparameters
-ann.epochs    <- 100
+ann.epochs    <- 200
 ann.batchsize <- 2
 ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
 ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
@@ -2672,13 +2672,13 @@ Y.test <- df.test.norm[,1]
 ### Build Model
 
 ```{r}
-# Build and fit LSTM model using k-fold cross validation
+# Build and fit LSTM model using k-fold cross validation    rmse = 50 
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
                  validation_split = 0.05,
                  epochs = ann.epochs,
                  batchsize = c(NA,ann.batchsize),
-                 #k.fold = 3, k.optimizer = "min",
+                 k.fold = 3, k.optimizer = "min",
                  hidden = data.frame(c(50,25),c("tanh")),
                  dropout = c(0.5,0.1),
                  output_activation = "linear",
@@ -2689,24 +2689,27 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 
 ```
+
 
 
 ```{r}
-hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
-                 timesteps = hourly.ann.timesteps,
-                 validation_split = 0.05,
-                 epochs = hourly.ann.epochs,
-                 batchsize = c(NA,hourly.ann.batchsize),
-                 #k.fold = 3, k.optimizer = "min",
-                 hidden = data.frame(c(50,25),c("tanh")),
-                 dropout = c(0.5,0.1),
+# Build and fit LSTM model using k-fold cross validation
+lstm <- fit_lstm(X = X.train, y = Y.train,
+                 timesteps = ann.timesteps,
+                 #validation_split = 0.05,
+                 epochs = ann.epochs,
+                 batchsize = c(NA,ann.batchsize),
+                 k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(128,64,32),c("relu")),
+                 #dropout = c(0.5,0.1),
                  output_activation = "linear",
                  stateful = F, return_sequences = T,
                  loss = "mean_squared_error",
                  optimizer = "Ftrl",
                  metrics = c('mean_absolute_error'))
-```
 
+
+```
 
 
 
