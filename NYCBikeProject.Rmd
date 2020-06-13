@@ -2286,7 +2286,7 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 rm(df1,df2)
 ```
-#### Arimax für alle Neighborhoods
+### Arimax für alle Neighborhoods
 
 Aufwand zu groß alle Neighborhoods in einem Netz vorraussagen
 
@@ -2307,7 +2307,7 @@ non_seasonal_diff_order <- arx$arma[6] #d
 seasonal_diff_order <- arx$arma[7]
 ```
 
-#### LSTM für alle Neighborhoods
+### LSTM für alle Neighborhoods
 
 Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
 ```{r, eval=FALSE, echo=TRUE}
@@ -2332,9 +2332,9 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 
 ```
 
-#### LSTM für ein Neighborhood
+### LSTM für ein Neighborhood
 
-### Long Short Term Memory Netz für stündliche Daten Erstellen
+#### Long Short Term Memory Netz für stündliche Daten Erstellen
 
 Bevor das Modell endgültig erstellt und Trainiert werden kann, werden die letzten Hyperparameter festgelegt. Nach sehr vielen Versuchen haben eine Batchsize von 1 und eine Epochenanzahl von 120 das beste Ergebnis erzielt.
 
@@ -2437,49 +2437,7 @@ daily_neighborhood_test$neighborhood <- NULL
 
 ```
 
-Regression
-
-### Lineare Regression für ein Neighborhood
-```{r}
-#Regression mit daily_neighborhood_train
-options(max.print=450)
-daily_neighborhood_model <- as.formula(anzahl ~ .)
-lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
-summary(lin_reg_daily_neighborhood)
-
-```
-
-
-
-```{r}
-#Vorhersage mit Testdaten
-lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
-
-test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
-test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
-test_q2_mse
-test_q2_rmse
-```
-
-```{r}
-daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
-ggplot() +
-  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
-  xlab("Date") + ylab("Anzahl") +
-  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
-  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))+
-  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
-  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
-```
-
-
-### 
-TrainDaten fürs LSTM Vorbereiten
+#### TrainDaten fürs LSTM Vorbereiten
 
 ```{r}
 # Dataframe für LSTM erstellen
@@ -2498,7 +2456,7 @@ daily_neighborhood_train_nn[,c(11:28)] <- effectcoding(daily_neighborhood_train_
 ```
 
 
-TestDaten fürs LSTM vorbereiten
+#### TestDaten fürs LSTM vorbereiten
 
 ```{r}
 # Dataframe für LSTM erstellen
@@ -2538,8 +2496,48 @@ names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_te
 daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn[,c(11:28)])
 ```
 
+### Lineare Regression für ein Neighborhood
 
-Arimax
+```{r}
+#Regression mit daily_neighborhood_train
+options(max.print=450)
+daily_neighborhood_model <- as.formula(anzahl ~ .)
+lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
+summary(lin_reg_daily_neighborhood)
+
+```
+
+
+
+```{r}
+#Vorhersage mit Testdaten
+lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
+
+test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
+test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
+test_q2_mse
+test_q2_rmse
+```
+
+```{r}
+daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
+ggplot() +
+  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
+  xlab("Date") + ylab("Anzahl") +
+  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
+  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
+```
+
+
+
+### Arimax
 
 ```{r}
 # Build ARIMAX model for training Data
@@ -2558,7 +2556,7 @@ non_seasonal_diff_order <- n.arx$arma[6] #d
 seasonal_diff_order <- n.arx$arma[7]
 ```
 
-LSTM
+### LSTM
 
 ```{r}
 ######
@@ -2566,7 +2564,7 @@ LSTM
 
 # Hyperparameters
 ann.epochs    <- 100
-ann.batchsize <- 20
+ann.batchsize <- 10
 ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
 ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
 
@@ -2660,6 +2658,13 @@ Y.train <- df.train.norm[,1]
 X.test <- df.test.norm[,-1]
 Y.test <- df.test.norm[,1]
 
+
+```
+
+
+### Build Model
+
+```{r}
 # Build and fit LSTM model using k-fold cross validation
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
@@ -2676,7 +2681,44 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ```
 
+
+
+
+## Modellvergleich
+
+### Stündliche Vorhersage
+
+In diesem letzten Schritt werden die RMSE Werte der linearen Regression und des LSTM Netzes miteinander verglichen.
+
 ```{r}
+# Vergleich RMSE
+print(paste("Linear Regression RMSE =", round(hourly_linreg_test_rmse, digits = 2)))
+print(paste("LSTM RMSE =", round(hourly_lstm_rmse, digits = 2)))
+```
+
+Es ist klar zu sehen, dass das künstliche neuronale Netz ein weitaus besseres Ergebnis liefert, als die lineare Regression. Dies entspricht den Anfangserwartungen, da bereits früh zu sehen war, dass viele Bezüge zwischen den Variablen nicht linearer Natur sind. Das neuronale Netz kann die Zusammenhänge anders bewerten und bezieht ebenfalls die Komponente der Zeit mit ein. Besonders deutlich wird dies im visuellen vergleich. Es ist klar zu sehen, dass die LSTM Vorhersage beinah deckungsgleich mit den Originaldaten verläuft, wohingegen die Vorhersagewerte der linearen Regression die Schwankungen zwar mitnehmen, jedoch viel zu wenig ausgeprägt.
+
+```{r}
+ggplot() +
+  labs(title = "Vergleich Der Vorhersagen Für Stündliche Nutzerzahlen") +
+  xlab("Date") + ylab("User Count") +
+  geom_line(data = hourly_graphdata, aes(y = Value, x = Date, color = "black")) +
+  geom_line(data = hourly_graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
+  geom_line(data = hourly_graphdata, aes(x = Date, y = LinReg, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(hourly.df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
+```
+
+### Tägliche Vorhersage
+
+
+```{r}
+
 average_mae_history <- lstm$avg_qual
 
 require(ggplot2)
@@ -2732,38 +2774,35 @@ ggplot() +
         axis.line = element_line(colour = "black"))
 ```
 
-
-## Modellvergleich
-
-### Stündliche Vorhersage
-
-In diesem letzten Schritt werden die RMSE Werte der linearen Regression und des LSTM Netzes miteinander verglichen.
-
 ```{r}
-# Vergleich RMSE
-print(paste("Linear Regression RMSE =", round(hourly_linreg_test_rmse, digits = 2)))
-print(paste("LSTM RMSE =", round(hourly_lstm_rmse, digits = 2)))
-```
+# Forecast and quality
+## Predict price differences
+lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
+predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
+predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
+## invert differencing
+testseries <- c(y_prior_first_test, y_test)
+testseries <- testseries[-NROW(testseries)]
+predictions <- invert_differencing(predictiondiff, testseries)
+## RMSE
+rmse(testseries, predictions)
 
-Es ist klar zu sehen, dass das künstliche neuronale Netz ein weitaus besseres Ergebnis liefert, als die lineare Regression. Dies entspricht den Anfangserwartungen, da bereits früh zu sehen war, dass viele Bezüge zwischen den Variablen nicht linearer Natur sind. Das neuronale Netz kann die Zusammenhänge anders bewerten und bezieht ebenfalls die Komponente der Zeit mit ein. Besonders deutlich wird dies im visuellen vergleich. Es ist klar zu sehen, dass die LSTM Vorhersage beinah deckungsgleich mit den Originaldaten verläuft, wohingegen die Vorhersagewerte der linearen Regression die Schwankungen zwar mitnehmen, jedoch viel zu wenig ausgeprägt.
-
-```{r}
+# Plot test and forecast values
+graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
+require(ggplot2)
 ggplot() +
-  labs(title = "Vergleich Der Vorhersagen Für Stündliche Nutzerzahlen") +
-  xlab("Date") + ylab("User Count") +
-  geom_line(data = hourly_graphdata, aes(y = Value, x = Date, color = "black")) +
-  geom_line(data = hourly_graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
-  geom_line(data = hourly_graphdata, aes(x = Date, y = LinReg, color = "orange")) +
-  theme_minimal() +
+  labs(title = "LSTM Forecasting for Elecricity Prices") +
+  xlab("Date") + ylab("Interest Rate") +
+  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
+  theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))+
-  facet_wrap(month(hourly.df.test$start_datetime, label = T, abbr = F), scales = "free_x") +
-  scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
+        axis.line = element_line(colour = "black"))
 ```
 
-### Tägliche Vorhersage
+
 
 ## Ausblick
 
