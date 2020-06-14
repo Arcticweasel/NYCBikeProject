@@ -2710,7 +2710,7 @@ Y.test <- df.test.norm[,1]
 Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
 ```{r}
-# Build and fit LSTM model using k-fold cross validation    rmse = 50 
+# Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
                  validation_split = 0.05,
@@ -2728,9 +2728,17 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ```
 
-Hier eine andere Variante, die zum Absturz von RStudio geführt hat.
+Speichere das Model
 
 ```{r}
+#lstm %>% save_model_hdf5("LSTM_Daily")
+```
+
+
+
+Hier eine andere Variante, die zum Absturz von RStudio geführt hat.
+
+```{r eval=FALSE, include=FALSE}
 # Build and fit LSTM model using k-fold cross validation
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
@@ -2783,6 +2791,7 @@ ggplot() +
 
 ### Tägliche Vorhersage
 
+Im unteren Plot sieht man wie die Validation Score mit der Anzahl an Epochen abnimmt.
 
 ```{r}
 
@@ -2811,6 +2820,8 @@ ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
 ```
 
 
+Nun machen wir die Vorhersage und berechnen den RMSE. Außerdem denormalisieren und dedifferenziren wir damit wir die echten Werte haben zum präsentieren.
+
 ```{r}
 # Nutzerdifferenzen vorhersagen
 lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
@@ -2826,7 +2837,7 @@ predictions <- invert_differencing(predictiondiff, testseries)
 lstm_rmse <- rmse(testseries, predictions)
 lstm_rmse
 ```
-
+Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzerzahlen und die echten Nutzerzahlen abgebildet. Man sieht das das Netz sehr gut die Schwankungen abbildet und auch sehr genau die Werte Vorhersagt.
 
 
 ```{r}
@@ -2846,7 +2857,7 @@ ggplot() +
         axis.line = element_line(colour = "black"))
 ```
 
-
+Man sieht das die Graphen fast übereinander liegen und die Vorhersage mit den echten Nutzerzahlen fast identisch ist. Mit dieser Vorhersage könnte man nun die logistischen Operationen hinter einer Bikesharingflotte optimieren und so die Kundenzufriedenheit und Nutzbarkeit verbessern.
 
 
 
@@ -2854,7 +2865,7 @@ ggplot() +
 
 Abschließend lassen sich beide Forschungsfragen zufriedenstellend beantworten. Sowohl tägliche, als auch stündliche Nutzerzahlen können mit Hilfe eines künstlichen neuronalen Netzes zuverlässig vorausgesagt werden. Dies ist bisher nur für einen Bezirk erfolgt, lässt sich aber auf alle anderen Bezirke, sowie Stationen übertragen. So kann eine genaue Vorhersage der Nutzerzahlen zur besseren Ressourcenplanung genutzt und die Kundenzufriedenheit gesteigert werden.
 
-Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke die Vorhersagen trifft.
+Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke/Stationen die Vorhersagen trifft. Dazu muss eine mehrdimensionale Y- Matrix mit den Nutzeranzahlen erstellt werden und dem Netz zur Verfügung gestellt werden.
 
 
 
