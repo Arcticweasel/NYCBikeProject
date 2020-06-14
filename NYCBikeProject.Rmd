@@ -2446,7 +2446,12 @@ daily_neighborhood_test$neighborhood <- NULL
 
 
 
-daily_neighborhood_train %>%
+avg_anzahl <- daily_neighborhood_train %>%
+  dplyr::select(anzahl)
+
+avg_anzahl$date <- NULL
+avg_anzahl <- as.data.frame(avg_anzahl)
+avg_anzahl %>%
   summarise(avg_anzahl = mean(anzahl))
 ```
 
@@ -2702,7 +2707,7 @@ Y.test <- df.test.norm[,1]
 
 ### Build Model
 
-Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei ungefähr 3000 - 5000 
+Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
 ```{r}
 # Build and fit LSTM model using k-fold cross validation    rmse = 50 
@@ -2723,7 +2728,7 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ```
 
-
+Hier eine andere Variante, die zum Absturz von RStudio geführt hat.
 
 ```{r}
 # Build and fit LSTM model using k-fold cross validation
