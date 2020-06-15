@@ -10679,3 +10679,4 @@ th {
 .card-title, .card-header {
   color: inherit;
 }
+.forceBreak { -webkit-column-break-after: always; break-after: column; }
