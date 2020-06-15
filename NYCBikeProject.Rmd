@@ -845,7 +845,8 @@ q2_starts %>%
 dev.off()
 ```
 
-![Durchschnittliche_Nutzeranzahl_Pro_Wochentag](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png)
+![Durchschnittliche Nutzeranzahl Pro Wochentag](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png)
+![Durchschnittliche Fahrzeit Pro Wochentag](Grafiken/Durchschnittliche_Fahrtdauer_Pro_Wochentag.png)
 
 Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
 Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
@@ -1069,7 +1070,6 @@ nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
 
 saveRDS(nyc_neighborhoods, "Data/GEOJSON.rds")
 ```
-
 
 GeoJSON laden, umformen für GGPLOT und einmal ausgeben
 
@@ -1454,7 +1454,6 @@ hourly_chelsea_train <- hourly_starts_nh %>%
 hourly_chelsea_train <- hourly_chelsea_train[, c(11,1:2,4,3,10,5:9)]
 ```
 
-
 ### Tägliche Daten
 
 Als erstes den Datensatz mit dem Wetter Datensatz joinen um einen Vollständigen Datensatz zu kriegen. Dazu benennen wir die Datums-spalte in beiden Datenframes gleich und joinen sie mit einem Leftjoin.
@@ -1484,7 +1483,6 @@ q2_starts_w$neighborhood[q2_starts_w$start_station_name=="E 37 St & Lexington Av
 q2_starts_w$neighborhood <- fct_explicit_na(q2_starts_w$neighborhood)
 ```
 
-
 Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holiday Feature.
 
 ```{r, eval=FALSE, echo=TRUE}
@@ -1498,13 +1496,11 @@ q2_starts_w$weekday <- factor(q2_starts_w$weekday, ordered = FALSE)
 q2_starts_w$holiday <- ifelse(isBizday(as.timeDate(q2_starts_w$date_start), holidayNYSE(2016))==FALSE,1,0)
 ```
 
-
 Prüfen auf fehlende Werte.
 
 ```{r, eval=FALSE, echo=TRUE}
 apply(q2_starts_w, 2, function(x) sum(is.na(x)))
 ```
-
 
 Nicht brauchbare Spalten entfernen, Wochentag und Feiertag hinzufügen, Neighborhoods Spalte in Character umwandeln um Problemen vorzubeugen. Environment aufräumen und Monat und Wochentag als nicht geordnetet Factoren hinzufügen.
 
@@ -1579,7 +1575,9 @@ q2_starts_w2_agg <- read_rds("Data/q2_starts_w2_agg.RDS")
 
 
 ### Testdaten
+
 #### Allgemeine Aggregation der Testdaten
+
 Um die Vorhersagegenauigkeit der nachfolgenden Modelle zu testen, werden Testdaten benötigt. Da alle Modelle mit den Daten des gesamten Jahres 2016 lernen, soll mit Daten aus dem Jahr 2017 getestet werden. Um alle Jahreszeiten angemessen zu betrachten, werden die Monate Februar, Mai, August und November ausgewählt. Um Speicherplatz zu sparen, werden diese im Format .RDS gespeichert.
 
 ```{r, eval=FALSE, echo=TRUE}
@@ -1877,11 +1875,9 @@ saveRDS(test_data_q2, "Data/test_data_q2.RDS")
 
 ```
 
-
 ```{r}
 test_data_q2 <- read_rds("Data/test_data_q2.RDS")
 ```
-
 
 
 
@@ -1912,7 +1908,6 @@ avg_anzahl <- as.data.frame(avg_anzahl)
 avg_anzahl %>%
   summarise(avg_anzahl = mean(anzahl))
 ```
-
 
 
 
@@ -2031,7 +2026,6 @@ ggplot() +
   scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
 ```
 
-
 ### Tägliche Regression
 
 Hier eine tägliche Reggression für alle Stationen/Neighborhoods.
@@ -2043,7 +2037,6 @@ q2_starts_w2_agg <- q2_starts_w2_agg %>%
   )
 ```
 
-
 ```{r , eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w
 options(max.print=450)
@@ -2051,7 +2044,6 @@ model_q2 <- as.formula(anzahl ~ .-date)
 lin_reg_q2 <- lm(model_q2, q2_starts_w)
 summary(lin_reg_q2)
 ```
-
 
 ```{r, eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w2_agg
@@ -2061,7 +2053,6 @@ lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
 summary(lin_reg_q2_w2_agg)
 
 ```
-
 
 Prediction
 
@@ -2076,6 +2067,8 @@ test_q2_rmse <- sqrt(mean((test_data_q2$anzahl - lin_reg_q2_predictions) ^ 2))
 test_q2_mse
 test_q2_rmse
 ```
+
+
 Der RMSE für alle NEighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
 
 ### Tägliche Lineare Regression für ein Neighborhood
@@ -2123,6 +2116,7 @@ ggplot() +
 ```
 
 Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden aber die Werte Leider zu stark abweichen. Wie oben schon erwähnt müsste man diese Regression erst optimieren damit sie Aussagekräftig ist.  
+
 
 
 
@@ -2272,7 +2266,6 @@ hourly.X.test <- hourly.df.test.norm[,-1]
 hourly.Y.test <- hourly.df.test.norm[,1]
 ```
 
-
 ### Tägliche Daten Aufbereiten für alle Neighborhoods
 
 Vorbereiten des Datensatzes für ein LSTM
@@ -2372,6 +2365,7 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 rm(df1,df2)
 ```
+
 #### Arimax für alle Neighborhoods tägliche Nutzer
 
 Aufwand zu groß alle Neighborhoods in einem Netz vorraussagen
@@ -2394,7 +2388,6 @@ seasonal_diff_order <- arx$arma[7]
 ```
 
 #### LSTM für alle Neighborhoods tägliche Nutzer
-
 
 ```{r, eval=FALSE, echo=TRUE}
 ######
@@ -2419,8 +2412,6 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 ```
 
 Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
-
-
 
 ### Long Short Term Memory Netz für stündliche Daten Erstellen
 
@@ -2574,6 +2565,7 @@ daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn
 ```
 
 
+
 #### Arimax für ein Neighborhood
 
 Mit Arimax findet man die optimalen Lags für ein LSTM Netz. Es ergibt sich ein optimaler LAg von 1.
@@ -2665,9 +2657,7 @@ df.test     <- df.resample_t
 
 ```
 
-
 Nachdem jetzt die Trainingsdaten und die Testdaten fertig sind kann ich die Originaldaten speichern um später diese zu Nutzen um zu redifferenzieren. Danach normalisiere ich die Daten in den ausgewählten Spalten. Danach extrahiere ich die X und die Y Daten jeweils für die Trainings- und Testdaten
-
 
 ```{r}
 test.start <- as.POSIXct("2017-02-04")
@@ -2716,7 +2706,9 @@ Y.test <- df.test.norm[,1]
 ```
 
 
+
 #### Build Model
+
 
 Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
@@ -2745,8 +2737,6 @@ Speichere das Model
 #lstm %>% save_model_hdf5("LSTM_Daily")
 ```
 
-
-
 Hier eine andere Variante, die zum Absturz von RStudio geführt hat.
 
 ```{r eval=FALSE, include=FALSE}
@@ -2767,8 +2757,6 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 
 ```
-
-
 
 ## Modellvergleich
 
@@ -2830,7 +2818,6 @@ ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
         axis.line = element_line(colour = "black"))
 ```
 
-
 Nun machen wir die Vorhersage und berechnen den RMSE. Außerdem denormalisieren und dedifferenziren wir damit wir die echten Werte haben zum präsentieren.
 
 ```{r}
@@ -2848,8 +2835,8 @@ predictions <- invert_differencing(predictiondiff, testseries)
 lstm_rmse <- rmse(testseries, predictions)
 lstm_rmse
 ```
-Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzerzahlen und die echten Nutzerzahlen abgebildet. Man sieht das das Netz sehr gut die Schwankungen abbildet und auch sehr genau die Werte Vorhersagt.
 
+Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzerzahlen und die echten Nutzerzahlen abgebildet. Man sieht das das Netz sehr gut die Schwankungen abbildet und auch sehr genau die Werte Vorhersagt.
 
 ```{r}
 
@@ -2871,15 +2858,11 @@ ggplot() +
 
 Man sieht das die Graphen fast übereinander liegen und die Vorhersage mit den echten Nutzerzahlen fast identisch ist. Mit dieser Vorhersage könnte man nun die logistischen Operationen hinter einer Bikesharingflotte optimieren und so die Kundenzufriedenheit und Nutzbarkeit verbessern.
 
-
-
 ## Ausblick
 
+Die Lösung für einen Bezirk ist zufriedenstellend. Um eine Lösung für alle Bezirke oder sogar alle Stationen zu erstellen, gibt es mehrere Möglichkeiten. Die erste Möglichkeit ist, für jeden Bezirk ein eigenes LSTM Netz zu erstellen, das ähnlich dem hier Vorgestellten aufgebaut ist. Dies kann analog auf Stationsebene erfolgen, da so das Problem der zu Großen Datenmengen in einer Rechenoperation umgangen wird. Des Weiteren ist es möglich nur ein künstliches neuronales Netz zu erstellen, das zeitgleich eine Vorhersage für alle Bezirke trifft. Hierfür muss das Vorgehen geringfügig angepasst werden. Ist in dem hier vorgestellten Netz die Target-Variable ein Vektor, so muss diese in einem gemeinsamen Netz eine Matrix sein, bestehend den Nutzerzahlen aller Bezirke. So entstehen mehrere Output-Units in einem Netz. Diese Lösung erfordert allerdings mehr Rechenleistung, als ein LSTM für nur einen Bezirk. Theoretisch ist dies auch auf Stationsebene möglich. Dies würde eine enorme Rechenleistung erfordern. Um dennoch eine Umsetzung zu ermöglichen, kann es sinnvoll sein eine Cloudplattform einzubinden. So wird genügend Rechenleistung zur Verfügung gestellt, um die entstehenden Datenmengen zielorientiert zu verarbeiten und eine zeitnahe Lösung zu gewährleisten.
+
 Abschließend lassen sich beide Forschungsfragen zufriedenstellend beantworten. Sowohl tägliche, als auch stündliche Nutzerzahlen können mit Hilfe eines künstlichen neuronalen Netzes zuverlässig vorausgesagt werden. Dies ist bisher nur für einen Bezirk erfolgt, lässt sich aber auf alle anderen Bezirke, sowie Stationen übertragen. So kann eine genaue Vorhersage der Nutzerzahlen zur besseren Ressourcenplanung genutzt und die Kundenzufriedenheit gesteigert werden.
-
-Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke/Stationen die Vorhersagen trifft. Dazu muss eine mehrdimensionale Y- Matrix mit den Nutzeranzahlen erstellt werden und dem Netz zur Verfügung gestellt werden.
-
-
 
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
