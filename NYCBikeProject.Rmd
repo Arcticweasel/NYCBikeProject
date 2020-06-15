@@ -1879,6 +1879,38 @@ saveRDS(test_data_q2, "Data/test_data_q2.RDS")
 test_data_q2 <- read_rds("Data/test_data_q2.RDS")
 ```
 
+
+
+#### Aufbereitung Für Tägliche Analyse für ein Neighborhood
+
+Als erstes werden die Daten neu aggregiert. Dazu filter ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods um die Zahl der Features zu minimieren.
+
+```{r}
+daily_neighborhood_train <- q2_starts_w2_agg %>%
+  filter(neighborhood == "Chelsea")
+
+daily_neighborhood_train$neighborhood <- NULL
+
+daily_neighborhood_test <- test_data_q2 %>%
+  filter(neighborhood == "Chelsea")
+
+
+daily_neighborhood_test$neighborhood <- NULL
+
+
+
+
+avg_anzahl <- daily_neighborhood_train %>%
+  dplyr::select(anzahl)
+
+avg_anzahl$date <- NULL
+avg_anzahl <- as.data.frame(avg_anzahl)
+avg_anzahl %>%
+  summarise(avg_anzahl = mean(anzahl))
+```
+
+
+
 ## Lineare Regression
 
 Um eine Vergleichsmöglichkeit für die Vorhersage der KNNs zu schaffen, wird eine lineare Regression als Benchmark durchgeführt. Es werden für die beiden Forschungsfragen lineare Regressionsmodelle erstellt, die mit den Testdaten eine Vorhersage für die Nutzeranzahl treffen. Der Fehler, der hierbei gemacht wird, wird in Form des **R**oot **M**ean **S**quared **E**rror (RMSE) gemessen und mit dem des KNN verglichen. Dieser gibt in diesem Fall die durchschnittliche Anzahl der Nutzer an, um die das Modell daneben liegt.
@@ -2036,7 +2068,57 @@ test_q2_mse
 test_q2_rmse
 ```
 
+
 Der RMSE für alle NEighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
+
+### Tägliche Lineare Regression für ein Neighborhood
+
+Eine lineare Regression für das Neighborhood Chelsea zu den Nutzerzahlen pro Tag.
+
+```{r}
+#Regression mit daily_neighborhood_train
+options(max.print=450)
+daily_neighborhood_model <- as.formula(anzahl ~ .)
+lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
+summary(lin_reg_daily_neighborhood)
+
+```
+
+
+
+```{r}
+#Vorhersage mit Testdaten
+lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
+
+test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
+test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
+test_q2_mse
+test_q2_rmse
+```
+
+Wir bekommen einen RMSE von 2257. D.h. das die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen um zu gucken ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
+
+
+```{r}
+daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
+ggplot() +
+  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
+  xlab("Date") + ylab("Anzahl") +
+  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
+  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
+```
+
+Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden aber die Werte Leider zu stark abweichen. Wie oben schon erwähnt müsste man diese Regression erst optimieren damit sie Aussagekräftig ist.  
+
+
+
 
 ## Künstliches Neuronales Netz
 
@@ -2415,33 +2497,9 @@ ggplot() +
 Die Grafik zeigt die stundengenaue Vorhersage der Nutzerzahlen je Monat im Testdatensatz. Die schwarze Linie zeigt die tatsächlichen Nutzerzahlen, die blaue Linie die Vorhergesagten. Es ist zu sehen, dass beide Linien fast deckungsgleich verlaufen. Teilweise weichen die prognostizierten Werte geringfügig von den Spitzen ab. Das Ergebnis ist jedoch als sehr gut zu beurteilen.
 
 
-### Neue Aggregation für einen Neighborhood
-
-Als erstes werden die Daten neu aggregiert. Dazu filter ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods um die Zahl der Features zu minimieren.
-
-```{r}
-daily_neighborhood_train <- q2_starts_w2_agg %>%
-  filter(neighborhood == "Chelsea")
-
-daily_neighborhood_train$neighborhood <- NULL
-
-daily_neighborhood_test <- test_data_q2 %>%
-  filter(neighborhood == "Chelsea")
+### Long Short Term Memory Netz für tägliche Daten für ein Neighborhood
 
 
-daily_neighborhood_test$neighborhood <- NULL
-
-
-
-
-avg_anzahl <- daily_neighborhood_train %>%
-  dplyr::select(anzahl)
-
-avg_anzahl$date <- NULL
-avg_anzahl <- as.data.frame(avg_anzahl)
-avg_anzahl %>%
-  summarise(avg_anzahl = mean(anzahl))
-```
 
 #### TrainDaten fürs LSTM Vorbereiten
 
@@ -2506,50 +2564,9 @@ names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_te
 daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn[,c(11:28)])
 ```
 
-### Lineare Regression für ein Neighborhood
 
-Eine lineare Regression für das Neighborhood Chelsea zu den Nutzerzahlen pro Tag.
 
-```{r}
-#Regression mit daily_neighborhood_train
-options(max.print=450)
-daily_neighborhood_model <- as.formula(anzahl ~ .)
-lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
-summary(lin_reg_daily_neighborhood)
-
-```
-
-```{r}
-#Vorhersage mit Testdaten
-lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
-
-test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
-test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
-test_q2_mse
-test_q2_rmse
-```
-
-Wir bekommen einen RMSE von 2257. D.h. das die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen um zu gucken ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
-
-```{r}
-daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
-ggplot() +
-  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
-  xlab("Date") + ylab("Anzahl") +
-  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
-  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))+
-  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
-  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
-```
-
-Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden aber die Werte Leider zu stark abweichen. Wie oben schon erwähnt müsste man diese Regression erst optimieren damit sie Aussagekräftig ist.  
-
-### Arimax
+#### Arimax für ein Neighborhood
 
 Mit Arimax findet man die optimalen Lags für ein LSTM Netz. Es ergibt sich ein optimaler LAg von 1.
 
@@ -2570,7 +2587,7 @@ non_seasonal_diff_order <- n.arx$arma[6] #d
 seasonal_diff_order <- n.arx$arma[7]
 ```
 
-### LSTM
+#### LSTM für ein Neighborhood
 
 Nun kommen wir zum Herzstück unserer Forschungsfrage, dem LSTM. Als erstes setze ich hier die Hyperparameter fest. Ich habe mich nach etlichen Probeläufen für eine Epochenanzahl von 200 und eine Batchsize von 2 entschieden. Der Lag und der Timestep sind vorgegeben durch ARIMAX. Ich nehme Nutzeranzahl und baue daraus eine stationäre Reihe und füge dieser einen Lag hinzu. 
 
@@ -2688,7 +2705,10 @@ Y.test <- df.test.norm[,1]
 
 ```
 
-### Build Model
+
+
+#### Build Model
+
 
 Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
@@ -2820,7 +2840,8 @@ Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzer
 
 ```{r}
 
-# Plot test and forecast values
+# Vorhersage für tägliche Nutzerzahlen für ein Neighborhood
+
 graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
 require(ggplot2)
 ggplot() +
