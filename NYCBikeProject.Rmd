@@ -1885,7 +1885,17 @@ test_data_q2 <- read_rds("Data/test_data_q2.RDS")
 
 Als erstes werden die Daten neu aggregiert. Dazu filter ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods um die Zahl der Features zu minimieren.
 
+
+
 ```{r}
+
+q2_starts_w2_agg <- q2_starts_w2_agg %>%
+  rename(
+    start_date = date
+  )
+
+
+
 daily_neighborhood_train <- q2_starts_w2_agg %>%
   filter(neighborhood == "Chelsea")
 
@@ -2030,12 +2040,7 @@ ggplot() +
 
 Hier eine tägliche Reggression für alle Stationen/Neighborhoods.
 
-```{r}
-q2_starts_w2_agg <- q2_starts_w2_agg %>%
-  rename(
-    start_date = date
-  )
-```
+
 
 ```{r , eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w
@@ -2069,25 +2074,28 @@ test_q2_rmse
 ```
 
 
-Der RMSE für alle NEighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
+Der RMSE für alle Neighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
 
 ### Tägliche Lineare Regression für ein Neighborhood
 
 Eine lineare Regression für das Neighborhood Chelsea zu den Nutzerzahlen pro Tag.
 
 ```{r}
+
+
 #Regression mit daily_neighborhood_train
-options(max.print=450)
+options(max.print=150)
 daily_neighborhood_model <- as.formula(anzahl ~ .)
 lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
 summary(lin_reg_daily_neighborhood)
 
-```
 
+```
 
 
 ```{r}
 #Vorhersage mit Testdaten
+
 lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
 
 test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
@@ -2095,6 +2103,8 @@ test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predicti
 test_q2_mse
 test_q2_rmse
 ```
+
+
 
 Wir bekommen einen RMSE von 2257. D.h. das die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen um zu gucken ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
 
@@ -2713,7 +2723,7 @@ Y.test <- df.test.norm[,1]
 Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
 ```{r}
-# Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35
+# Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35 // 63
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
                  validation_split = 0.05,
@@ -2842,18 +2852,20 @@ Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzer
 
 # Vorhersage für tägliche Nutzerzahlen für ein Neighborhood
 
-graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
+graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions, LinReg = lin_reg_q2n_predictions[4:NROW(lin_reg_q2n_predictions)])
 require(ggplot2)
 ggplot() +
   labs(title = "LSTM Forecasting for Bikeusers") +
   xlab("Date") + ylab("Bikeuser") +
-  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
-  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
+  geom_line(data = graphdata, aes(y = Value, x = Date, color = "black")) +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
+  geom_line(data = graphdata, aes(x = Date, y = LinReg, color = "orange")) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
         panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))
+        axis.line = element_line(colour = "black")) +
+  scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
 ```
 
 Man sieht das die Graphen fast übereinander liegen und die Vorhersage mit den echten Nutzerzahlen fast identisch ist. Mit dieser Vorhersage könnte man nun die logistischen Operationen hinter einer Bikesharingflotte optimieren und so die Kundenzufriedenheit und Nutzbarkeit verbessern.
