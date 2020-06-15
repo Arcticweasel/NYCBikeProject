@@ -138,7 +138,6 @@ knitr::opts_chunk$set(echo = FALSE)
 m
 ```
 
-
 ## Choropleth Map
 
 ```{r}
@@ -165,7 +164,6 @@ leaflet(map_data) %>%
 
 addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Total Users", position = "bottomright" )
 ```
-
 
 ## Entwicklung der Nutzerzahlen Je Bezirk
 
@@ -256,7 +254,6 @@ ggplot() +
   scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
 ```
 
-
 ## Long Short Term Memory Netz
 
 - Einbeziehung aller Variablen außer Datum
@@ -329,7 +326,6 @@ ggplot() +
   scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
 ```
 
-
 # Tägliche Analyse
 
 ## Tägliche Daten
@@ -378,25 +374,26 @@ ggplot() +
   scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
 ```
 
-
 ## Long Short Term Memory Netz
 
 - Einbeziehung aller Variablen außer Datum
 - Hyperparameter:
-  - Anzahl Epochen:   100 + k-fold cross validation
-  - Batchsize:         20     
-  - Anzahl Lags:        1
-  - Anzahl Timesteps:   2
+  - Anzahl Epochen:   `r ann.epochs` + k-fold cross validation
+  - Batchsize:        `r ann.batchsize`     
+  - Anzahl Lags:      `r ann.lags`
+  - Anzahl Timesteps: `r ann.timesteps`
   
 ## Long Short Term Memory Netz
 
 ```{r,echo=TRUE, eval=FALSE}
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
+                 validation_split = 0.05,
                  epochs = ann.epochs,
                  batchsize = c(NA,ann.batchsize),
-                 k.fold = 4, k.optimizer = "min",
-                 hidden = data.frame(c(128,64,32),c("relu")),
+                 k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(50,25),c("tanh")),
+                 dropout = c(0.5,0.1),
                  output_activation = "linear",
                  stateful = F, return_sequences = T,
                  loss = "mean_squared_error",
@@ -406,8 +403,8 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ## Long Short Term Memory Netz
 
-- RMSE mit `r daily_lstm_rmse` niedrig
-  - Durchschnittlicher Fehler von rund `r round(daily_lstm_rmse)` Nutzern pro Tag
+- RMSE mit `r lstm_rmse` niedrig
+  - Durchschnittlicher Fehler von rund `r round(lstm_rmse)` Nutzern pro Tag
   
 ```{r, fig.align='center', fig.height=10, fig.width=8}
 #hier fehlt die Grafik für das LSTM
@@ -419,7 +416,7 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 - LSTM schneidet deutlich besser ab
   - zufriedenstellende Prognose
 - RMSE der linearen Regression: `r round(test_q2_rmse)`
-- RMSE des LSTM Netzes: `r round(daily_lstm_rmse)`
+- RMSE des LSTM Netzes: `r round(lstm_rmse)`
 
 ## Modellvergleich
 
