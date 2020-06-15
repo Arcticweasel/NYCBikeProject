@@ -18,9 +18,6 @@ library(lubridate)
 library(imputeTS)
 library(timeDate)
 library(fastDummies)
-
-library(keras)
-
 library(forecast)
 library(keras)
 library(ggplot2)
@@ -28,8 +25,6 @@ library(gridExtra)
 library(geojsonio)
 library(move)
 library(moveVis)
-
-
 
 source("Routinen/ANNUtils.r")
 
@@ -40,7 +35,7 @@ theme_set(theme_classic())
 
 ## Überblick
 
-In diesem Anwendungsprojekt werden Daten der City of New York bearbeitet, visualisiert und analysiert, die Informationen zum städtischen Bikesharing aus dem Jahr 2016 enthalten. Das Hauptaugenmerk in diesem Projekt liegt darauf, möglichst sinnvoll und genau die Anzahl der Nutzer an den verschiedenen Stationen vorherzusagen. Zu diesem Zweck werden zusätzlich Wetterdaten der Stadt New York hinzugezogen. 
+In diesem Anwendungsprojekt werden Daten der City of New York bearbeitet, visualisiert und analysiert, die Informationen zum städtischen Bikesharing aus dem Jahr 2016 enthalten. Das Hauptaugenmerk in diesem Projekt liegt darauf möglichst sinnvoll und genau die Anzahl der Nutzer an den verschiedenen Stationen vorherzusagen. Zu diesem Zweck werden zusätzlich Wetterdaten der Stadt New York hinzugezogen. 
 
 Die Vorhersage der Nutzerzahlen geschieht mit Hilfe eines künstlichen neuronalen Netzes, einem sogenannten **L**ong **S**hort **T**erm **M**emory Netz, kurz **LSTM**. Um die Performance des Netzes zu überprüfen wird das Ergebnis mit dem Ergebnis einer linearen Regression nach der Methode der kleinsten Quadrate, auch OLS Regression genannt, verglichen. 
 
@@ -66,7 +61,7 @@ Im späteren Verlauf des Projektes haben sich aufgrund der Datenmenge Probleme i
 
 **2.** Können die Nutzerzahlen pro Bezirk und Tag zuverlässig vorausgesagt werden?
 
-Durch die Aggregation auf Bezirksebene verringert sich die Anzahl an Variablen erheblich. Aufgrund der dennoch enorm großen Datenmengen und den daraus resultierenden Problemen werden die Vorhersagen mit dem LSTM Netz und der linearen Regression exemplarisch für einen Bezirk durchgeführt. 
+Durch die Aggregation auf Bezirksebene verringert sich die Anzahl an Variablen erheblich. Aufgrund der dennoch enorm großen Datenmengen und den daraus resultierenden Problemen, werden die Vorhersagen mit dem LSTM Netz und der linearen Regression exemplarisch für einen Bezirk durchgeführt. 
 
 ## Preprocessing
 
@@ -244,7 +239,6 @@ Im Datensatz der täglichen Wetterdaten befindet sich in den Spalten Niederschla
 apply(bike, 2, function(x) sum(is.na(x)))
 apply(weather, 2, function(x) sum(is.na(x)))
 
-
 # Mögliche Variante für missing values beim Wetter 
 weather_test <- weather
 is.na(weather_test$precipitation) <- which(weather$precipitation == 'T')
@@ -320,9 +314,8 @@ weather$snow.fall[weather$snow.fall == 2540] <- 0.01
 max(weather$snow.depth)
 weather$snow.depth[weather$snow.depth == 2540] <- 0.01
 
-# Wetter speichern
+# Wetterdaten speichern
 saveRDS(weather, "Data/weather_daily_2016.rds")
-
 ```
 
 ```{r}
@@ -370,7 +363,6 @@ saveRDS(weather17, "Data/weather_daily_2017.RDS")
 # Wetterdaten laden
 weather_2017 <- read_rds("Data/weather_daily_2017.RDS")
 ```
-
 
 #### Stündliche Wetterdaten
 
@@ -549,7 +541,7 @@ Im weiteren Verlauf dieser Arbeit wird mit den Datensätzen hourly_weather_16 un
 
 #### Stündliche Daten
 
-Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). In den Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
+Um die erste Forschungsfrage beantworten zu können, müssen die Daten zunächst so aggregiert werden, dass die Anzahl der Fahrten pro Stunde und Station sichtbar werden. Hier werden zwei Datensätze erstellt: Der Erste hält die Anzahl der pro Stunde losgefahrenen Radfahrer je Station fest (hourly_starts). Der Zweite hält die Anzahl der pro Stunde ankommenden Radfahrer je Station fest (hourly_stops). Die Anzahl der Fahrer wird mit der Variable user_count beschrieben. Die Variablen avg_age und avg_tripduration beschreiben jeweils das durchschnittliche Alter in Jahren, sowie die durchschnittliche Fahrtdauer in Sekunden. Die Variable weekend gibt an, ob der jeweilige Tag ein Wochenendtag (Samstag oder Sonntag) ist (1 = ja, 0 = nein). Die Variablen male_user_count, female_user_count und undefined_user_count geben die Anzahl der Fahrer nach Geschlecht gesplittet an. subscriber_count und customer_count geben an, wie viele der Fahrer ein Abo hatten bzw. einen 1-Tages oder 3-Tages-Pass. In den letzten 5 genannten Variablen werden fehlende Werte durch 0 ersetzt, da sich diese durch das Pivotieren der jeweiligen Data Frames ergeben und für die Anzahl der Fahrer stehen.
  
 ```{r, eval= FALSE, echo=TRUE}
 # Datensatz mit getrenntem Datum und Stunde erstellen
@@ -675,7 +667,6 @@ rm(usertype)
 # Aggregierte Datensätze speichern
 saveRDS(hourly_starts, "Data/bike_q1_starts.rds")
 saveRDS(hourly_stops, "Data/bike_q1_stops.rds")
-
 ```
 
 ```{r}
@@ -686,7 +677,7 @@ hourly_stops <- readRDS("Data/bike_q1_stops.rds")
 
 #### Tägliche Daten
 
- Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren damit ich damit nach dem Tag aggregieren kann.
+Um die Daten für die zweite Frage zu aggregieren, müssen die Abfahrten und Ankünfte pro Station pro Tag zusammengefasst werden. Deswegen werde ich als erstes das Datum extrahieren, damit ich damit nach dem Tag aggregieren kann.
  
 ```{r, eval= FALSE, echo=TRUE}
 
@@ -712,7 +703,6 @@ gender_q2_starts <- pivot_wider(bike_q2_starts_gender, names_from = gender, valu
 
 gender_q2_stops <- pivot_wider(bike_q2_stops_gender, names_from = gender, values_from = anzahl)
 
-
 # Aggregiere Starts und Stops nach Datum und Station
 
 bike_q2_starts <- bike_q2 %>%
@@ -721,7 +711,6 @@ bike_q2_starts <- bike_q2 %>%
 bike_q2_stops <- bike_q2 %>%
   group_by(date_stop, end_station_name, end_station_latitude, end_station_longitude) %>%
   summarise(avr_age = round(2016-mean(birth_year)), avg_tripduration = mean(tripduration), anzahl = n() )
-
 
 # Füge den agregierten Tabellen das Gender hinzu
 
@@ -755,7 +744,6 @@ bike_q2_stops_rdy <- rename(bike_q2_stops_rdy, undefined = "0")
 
 rm(bike_q2, bike_q2_starts, bike_q2_starts_gender, bike_q2_stops, bike_q2_stops_gender, gender_q2_starts, gender_q2_stops)
 
-
 saveRDS(bike_q2_starts_rdy, "Data/bike_q2_starts.rds")
 saveRDS(bike_q2_stops_rdy, "Data/bike_q2_stops.rds")
 
@@ -770,7 +758,7 @@ q2_stops <- read_rds("Data/bike_q2_stops.rds")
 
 ### Basis Visualisierungen
 
-Um ein Gefühl für die Daten zu bekommen und erste Einblicke in deren Beschaffenheit zu erhalten, werden zunächst einfache Visualisierungen genutzt.
+Um ein Gefühl für die Daten zu bekommen und erste Einblicke in deren Beschaffenheit zu erhalten, werden einfache Visualisierungen genutzt.
 
 Zunächst werden die monatlichen Nutzerzahlen betrachtet.
 
@@ -849,7 +837,7 @@ dev.off()
 ![Durchschnittliche Fahrzeit Pro Wochentag](Grafiken/Durchschnittliche_Fahrtdauer_Pro_Wochentag.png)
 
 Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
-Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
+Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden außer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
 
 Um weitere Anhaltspunkte für die Nutzung zu erhalten, werden die Nutzerzahlen eines Tages in Stundenintervallen betrachtet.
 
@@ -868,7 +856,7 @@ hourly_starts %>%
 dev.off()
 ```
 
-![Durchschnittliche_Nutzeranzahl_Pro_Stunde](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Stunde.png)
+![Durchschnittliche Nutzeranzahl Pro Stunde](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Stunde.png)
 
 Auch hier kann ein Muster erkannt werden. Von 5 Uhr bis 9 Uhr morgens steigen die Nutzerzahlen und fallen danach ab, um von 15 bis 17 Uhr wieder anzusteigen. Dies spricht für die zuvor geäußerte Vermutung, dass viele Kunden die Fahrräder für den Arbeitsweg nutzen. Am Vormittag und Nachmittag sind die Nutzerzahlen am Höchsten. Dies kann den Arbeitsbeginn und das Arbeitsende markieren.
 
@@ -894,7 +882,7 @@ dev.off()
 
 ![Durchschnittliche Nutzeranzahl Pro Stunde Nach Abonnement](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Stunde_Nach_Abo.png)
 
-Es ist zu sehen, dass für die Nutzergruppe, die ein jährliches Abo hat (Subscriber), das stündliche Muster erhalten bleibt. Jeweils morgens und nachmittags zu Arbeitsbeginn und -ende nutzen die meisten Kunden das Angebot. Die Nutzergruppe Customer, die nur einen ein- oder drei-Tages-Pass nutzen ist stark unterrepräsentiert. Dies kann darauf schließen lassen, dass das Angebot eher von Personen genutzt wird, die dies regelmäßig nutzen wollen, wie z.B. für den Arbeitsweg, und eher nicht für z.B. Tagesausflüge. Ähnlich wie bei den starken Unterschieden in der Nutzung bei den Geschlechtern, kann es hier lohnenswert sein die Hintergründe zu betrachten und weiter zu erforschen, um neue Nutzergruppen zu aquirieren.
+Es ist zu sehen, dass für die Nutzergruppe, die ein jährliches Abo hat (Subscriber), das stündliche Muster erhalten bleibt. Jeweils morgens und nachmittags zu Arbeitsbeginn und -ende nutzen die meisten Kunden das Angebot. Die Nutzergruppe Customer, die nur einen ein- oder drei-Tages-Pass nutzen ist stark unterrepräsentiert. Dies kann darauf schließen lassen, dass das Angebot eher von Personen genutzt wird, die dies regelmäßig nutzen wollen, wie z.B. für den Arbeitsweg, und eher nicht für z.B. Tagesausflüge. Ähnlich wie bei den starken Unterschieden in der Nutzung bei den Geschlechtern, kann es hier lohnenswert sein die Hintergründe zu betrachten und weiter zu erforschen, um neue Nutzergruppen zu aquirieren und das Angebot für vorhandene Nutzergruppen zu optimieren.
 
 Um mehr über die Nutzer zu erfahren, wird nun das durchschnittliche Alter der Nutzer pro Stunde betrachtet.
 
@@ -1027,12 +1015,12 @@ animate_frames(geo_frames, out_file = "movement_of_cyclists_6_2016.gif")
 
 Die hier erstellte Grafik wird nicht weiter genutzt und betrachtet. Dies hat verschiedene Gründe. Zum Einen ist die Visualisierung aufgrund der Menge an Datenpunkten, die sich auf einem relativ kleinen Ausschnitt der Karte befinden zu unübersichtlich. Zum Anderen ist auch kein klares Fahrtenmuster erkennbar. Dies zum Teil aufgrund der Unübersichtlichkeit, aber auch, da fast alle Stationen im Stadtteil Manhattan liegen und die Fahrten recht gleichmäßig auf alle Stationen verteilt sind.
 
-### heat map / choropleth map / interactive map / animierte map
+### Heat Map / Choropleth Map / Interactive Map / Animierte Map
 
-Als erstes laden wir einige Plugins zum visualisieren von Maps und Geodaten
+Als erstes laden wir einige Plugins zum visualisieren von Maps und Geodaten.
 
 ```{r}
-# load packeges
+# load packages
 library(tigris)
 library(leaflet)
 library(sp)
@@ -1041,7 +1029,6 @@ library(broom)
 library(httr)
 library(rgdal)
 ```
-
 
 Nun kreiere ich einen Stations Dataframe mit den Gesamtnutzerzahlen für das gesamte Jahr.
 
@@ -1055,13 +1042,10 @@ Nun kreiere ich einen Stations Dataframe mit den Gesamtnutzerzahlen für das ges
 stations$count <- NULL
 ```
 
-
-
 Mit der GET funktion hole ich mir die verschiedenen Neighboorhoods als GeoJSON von einem Link und speicherere diese als GEOJSON.
 
 ```{r, eval=FALSE, echo=TRUE}
 # get the neighborhoods
-
 
 r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
 
@@ -1071,7 +1055,7 @@ nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
 saveRDS(nyc_neighborhoods, "Data/GEOJSON.rds")
 ```
 
-GeoJSON laden, umformen für GGPLOT und einmal ausgeben
+GeoJSON laden, umformen für GGPLOT und einmal ausgeben.
 
 ```{r}
 nyc_neighborhoods <- readRDS("Data/GEOJSON.rds")
@@ -1086,8 +1070,7 @@ ggplot() +
 
 ```
 
-
-Ausgabe der Spartial Data mit LEaflet
+Ausgabe der Spatial Data mit Leaflet.
 
 ```{r}
 # benutze leaflet mit neighbourhoods
@@ -1098,7 +1081,6 @@ leaflet(nyc_neighborhoods) %>%
   addProviderTiles("CartoDB.Positron")
 
 ```
-
 
 Einmal Stations als points definieren und in einen spatial polygon dataframe umformen.
 
@@ -1121,8 +1103,7 @@ matches <- over(points_spdf, nyc_neighborhoods)
 points <- cbind(points, matches)
 ```
 
-Einmal die Karte angucken mit leaflet und eingetragenene Stationen und Neighborhoods mit den Nutzerzahlen
-
+Einmal die Karte angucken mit leaflet und eingetragenene Stationen und Neighborhoods mit den Nutzerzahlen.
 
 ```{r}
 # group by neighborhood
@@ -1149,7 +1130,7 @@ leaflet(map_data) %>%
 addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totalusers", position = "bottomright" )
 ```
 
-Die Karte ohne die Stationen mit nur den Neighborhoods und der einfärbung der Neighborhoods nach Gesamtnutzerzahlen
+Die Karte ohne die Stationen mit nur den Neighborhoods und der Einfärbung der Neighborhoods nach Gesamtnutzerzahlen erstellen.
 
 ```{r}
 
@@ -1165,19 +1146,13 @@ addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totaluser
 
 ```
 
-
-Eine Karte mit Stationen ohne Neighborhoods aber mit Einfärbung der Stationen nach Nutzerzahlen.
-
+Eine Karte mit Stationen ohne Neighborhoods aber mit Einfärbung der Stationen nach Nutzerzahlen erstellen.
 
 ```{r}
-
-
-
 # Eigene color Palette mit eigenen Reichweiten
 
 mybins <- seq(1000, 50000, by=5000)
 mypalette <- colorBin( palette="YlOrBr", domain=stations$totalusers, na.color="transparent", bins=mybins)
-
 
 # Text für Tooltip preperieren
 
@@ -1185,8 +1160,6 @@ mytext <- paste(
    "Name: ", stations$start_station_name, "<br/>", 
    "Totalusers: ", stations$totalusers, sep="") %>%
   lapply(htmltools::HTML)
-
- 
 
 # Map kreieren
 m <- leaflet(stations) %>% 
@@ -1204,8 +1177,7 @@ m <- leaflet(stations) %>%
 m 
 ```
 
-
-Ich versuche nun die Nutzerzahlen übers Jahr in den verschiedenen Borrows zu animieren.
+Ich versuche nun die Nutzerzahlen übers Jahr in den verschiedenen Boroughs zu animieren.
 
 ```{r}
 library(leaflet.minicharts)
@@ -1214,8 +1186,6 @@ basemap <- leaflet(map_data) %>%
   addTiles() %>% 
   addPolygons(popup = ~neighborhood) %>%
   addProviderTiles("CartoDB.Positron")
-
-
 
 basemap %>%
   addMinicharts(
@@ -1227,15 +1197,13 @@ basemap %>%
     transitionTime = 0.1,
   ) %>%
   setView(-73.98, 40.75, zoom = 13)
-
 ```
-Bei der Animation animiert er nur den ersten Tag und danach keinen weiteren Tag. Problem wurde in der nächsten Animation durch andere Aggregation gelöst.
 
+Bei der Animation animiert er nur den ersten Tag und danach keinen weiteren Tag. Das Problem wurde in der nächsten Animation durch andere Aggregation gelöst.
 
-Neuer versuch mit Daten die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einen anderen Datensatz.
+Neuer versuch mit Daten, die nach den Neighborhoods aggregiert wurden. Dazu aggregiere ich erstmal einen anderen Datensatz.
 
 ```{r, eval=FALSE, echo=TRUE}
-
 newTest <- bike
 newTest <- newTest %>%
   mutate(start_date = as_date(starttime))
@@ -1257,12 +1225,10 @@ newTest$stoptime <- NULL
 newTest$boroughCode <- NULL
 newTest$borough <- NULL
 
-
 newTest$neighborhood[newTest$start_station_id==160 & is.na(newTest$neighborhood)] <- "Murray Hill"
 
 
 newTest$neighborhood <- fct_explicit_na(newTest$neighborhood)
-
 
 newTest_agg1 <- newTest %>%
   group_by(neighborhood) %>%
@@ -1279,13 +1245,13 @@ saveRDS(newTest_agg, "Data/newTest_agg.rds")
 
 Diese Daten speichere ich in einer RDS und lade sie wieder damit ich den Codechunk nicht immer ausführen muss.
 
-Load Data
+Load Data.
 
 ```{r}
 newTest_agg <- readRDS("Data/newTest_agg.rds")
 ```
 
-Nun eine Animation der Nutzerzahlen der eizelnen Neighborhoods mit dem neuen Datensatz.
+Nun folgt eine Animation der Nutzerzahlen der einzelnen Neighborhoods mit dem neuen Datensatz.
 
 ```{r}
 basemap %>%
@@ -1307,8 +1273,7 @@ basemap %>%
 rm(points_spdf, points_by_neighborhood, stations, newTest_agg1, matches, nyc_neighborhoods, nyc_neighborhoods_df)
 ```
 
-
-## Aufbereitung Für Analyse
+## Aufbereitung Für Die Analyse
 
 ### Stündliche Daten
 
@@ -1389,7 +1354,6 @@ hourly_starts_nh$neighborhood <- as.character(hourly_starts_nh$neighborhood)
 
 # Daten speichern
 saveRDS(hourly_starts_nh, "Data/q1_starts_nh.RDS")
-
 ```
 
 ```{r}
@@ -1437,14 +1401,14 @@ apply(hourly_starts, 2, function(x) sum(is.na(x)))
 hourly_starts[,7:9] <- na_interpolation(hourly_starts[,7:9], option = "spline")
 ```
 
-Dieser Datensatz wird in den weiteren Analysen nicht betrachtet. Alle weiteren Berechnungen werden mit dem Datensatz hourly_starts_nh durchgeführt, der die Fahrerzahlen auf Neighborhood-Ebene aggregiert. Dies hat den Grund, dass der obige Datensatz die Fahrerzahlen auf Stationsebene aggregiert und nach der Dummyfizierung so groß ist, dass die Rechenleistung für die notwenigen Berechnungen nicht ausreicht.
+Dieser Datensatz wird in den weiteren Analysen nicht betrachtet. Alle weiteren Berechnungen werden mit dem Datensatz hourly_starts_nh durchgeführt, der die Fahrerzahlen auf Neighborhood-Ebene aggregiert. Dies hat den Grund, dass der obige Datensatz die Fahrerzahlen auf Stationsebene aggregiert und nach der Dummyfizierung so groß ist, dass die vorhandene Rechenleistung für die notwenigen Berechnungen nicht ausreicht.
 
 Auf dem Datensatz hourly_starts_nh basierend, wird ein Datensatz erstellt, der nur die stündlichen Daten des Bezirks Chelsea enthält. Da der Datensatz hourly_starts_nh sehr groß ist und während der weiteren Aufbereitung immer größer wird, sodass notwendige Berechnungen sehr lange dauern oder nicht durchführbar sind, wird ein Bezirk ausgewählt für den die Berechnungen exemplarisch durchgeführt werden. Der Bezirk Chelsea wird gewählt, da er die meisten Fahrten und beinah lückenlos für jede Stunde Daten aufweist. Die Variablen Monat und Woche werden aus diesem Datensatz entfernt, da sie im späteren Verlauf der Analyse das Modell für die Regression, sowie für das LSTM Netz stark aufblähen. Um dennoch die saisonale Komponente in den Daten zu behalten, wird eine Variable für das Quartal eingefügt. Für die spätere Visualisierung der Ergebnisse wird eine Spalte erstellt, die Datum und Stunde zusammenfasst. 
 
-Die Modellierung des LSTM Netzes wird später ausschließlich anhand dieses Datensatzes erfolgen.
+Die Modellierung des stündlichen LSTM Netzes wird später ausschließlich anhand dieses Datensatzes erfolgen.
 
 ```{r}
-#Trainingsdaten nur für Bezirk Chelsea
+# Trainingsdaten nur für Bezirk Chelsea
 hourly_chelsea_train <- hourly_starts_nh %>%
   dplyr::select(-month, -week) %>%
   filter(neighborhood == "Chelsea") %>%
@@ -1456,16 +1420,13 @@ hourly_chelsea_train <- hourly_chelsea_train[, c(11,1:2,4,3,10,5:9)]
 
 ### Tägliche Daten
 
-Als erstes den Datensatz mit dem Wetter Datensatz joinen um einen Vollständigen Datensatz zu kriegen. Dazu benennen wir die Datums-spalte in beiden Datenframes gleich und joinen sie mit einem Leftjoin.
+Als erstes den Datensatz mit dem Wetterdatensatz joinen um einen vollständigen Datensatz zu erhalten. Dazu benennen wir die Datumsspalte in beiden Datenframes gleich und joinen sie mit einem Leftjoin.
 
 ```{r}
-
 q2_starts_w <- left_join(q2_starts, weather, by = c("date_start" = "date"))
-
-
 ```
 
-Aggregation eines Datensatzes mit Neighborhoods. Wir joinen stations mit q2_stats_w und ersetzen fehlenden Bezirk.
+Aggregation eines Datensatzes mit Neighborhoods. Wir joinen stations mit q2_stats_w und ersetzen den fehlenden Bezirk.
 
 ```{r}
 points1 <- points %>%
@@ -1486,7 +1447,6 @@ q2_starts_w$neighborhood <- fct_explicit_na(q2_starts_w$neighborhood)
 Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holiday Feature.
 
 ```{r, eval=FALSE, echo=TRUE}
-
 #Variable für Wochentag einfügen
 q2_starts_w <- q2_starts_w %>%
   mutate(weekday = wday(date_start, abbr = F, label = T, week_start = 1))
@@ -1502,12 +1462,9 @@ Prüfen auf fehlende Werte.
 apply(q2_starts_w, 2, function(x) sum(is.na(x)))
 ```
 
-Nicht brauchbare Spalten entfernen, Wochentag und Feiertag hinzufügen, Neighborhoods Spalte in Character umwandeln um Problemen vorzubeugen. Environment aufräumen und Monat und Wochentag als nicht geordnetet Factoren hinzufügen.
+Nicht brauchbare Spalten entfernen, Wochentag und Feiertag hinzufügen, Neighborhoodsspalte in character umwandeln, um Problemen vorzubeugen. Environment aufräumen und Monat und Wochentag als nicht geordnete Faktoren hinzufügen.
 
 ```{r, eval=FALSE, echo=TRUE}
-
-
-
 q2_starts_w$male <- NULL
 q2_starts_w$woman <- NULL
 q2_starts_w$undefined <- NULL
@@ -1544,11 +1501,7 @@ q2_starts_w2_agg$neighborhood <- as.character(q2_starts_w2_agg$neighborhood)
 
 rm(q2_starts_w, q2_starts)
 
-
-
-
 #Monat und Woche als Variablen eingefügt
-
 
 #q2_starts_w2_agg <- q2_starts_w2_agg %>%
   #mutate(week = week(date))
@@ -1556,29 +1509,25 @@ rm(q2_starts_w, q2_starts)
 q2_starts_w2_agg <- q2_starts_w2_agg %>%
   mutate(month = month(date, abbr = F, label = T))
 
-
 #Variable für Wochentag als ungeordneten Faktor speichern
 q2_starts_w2_agg$weekday <- factor(q2_starts_w2_agg$weekday, ordered = FALSE)
 q2_starts_w2_agg$month <- factor(q2_starts_w2_agg$month, ordered = FALSE)
 
-
 # Save Data
 saveRDS(q2_starts_w2_agg, "Data/q2_starts_w2_agg.RDS")
-
 ```
 
- Load Data
+ Load Data.
 
 ```{r}
 q2_starts_w2_agg <- read_rds("Data/q2_starts_w2_agg.RDS")
 ```
 
-
 ### Testdaten
 
 #### Allgemeine Aggregation der Testdaten
 
-Um die Vorhersagegenauigkeit der nachfolgenden Modelle zu testen, werden Testdaten benötigt. Da alle Modelle mit den Daten des gesamten Jahres 2016 lernen, soll mit Daten aus dem Jahr 2017 getestet werden. Um alle Jahreszeiten angemessen zu betrachten, werden die Monate Februar, Mai, August und November ausgewählt. Um Speicherplatz zu sparen, werden diese im Format .RDS gespeichert.
+Um die Vorhersagegenauigkeit der nachfolgenden Modelle zu überprüfen, werden Testdaten benötigt. Da alle Modelle mit den Daten des gesamten Jahres 2016 lernen, soll mit Daten aus dem Jahr 2017 getestet werden. Um alle Jahreszeiten angemessen zu betrachten, werden die Monate Februar, Mai, August und November ausgewählt. Um Speicherplatz zu sparen, werden diese im Format .RDS gespeichert.
 
 ```{r, eval=FALSE, echo=TRUE}
 feb2017 <- read_csv("Data/201702-citibike-tripdata.csv")
@@ -1746,10 +1695,9 @@ hourly_chelsea_test <- hourly_test %>%
 hourly_chelsea_test <- hourly_chelsea_test[, c(11,1:2,4,3,10,5:9)]
 ```
 
-
 #### Aufbereitung Für Tägliche Analyse
 
-Um ein unsere Regression bzw. unser LSTM für unser Forschungsfrage zu überprüfen brauchen wir zusätzlich zu den Traininsdaten auch Testdaten. Diese sind von den Monaten Februar, Mai, August und November von 2017. Im nachfolgenden Codechunck werden diese Testdaten genauso aggregiert wie oben die Traininsdaten.
+Um unsere Regression bzw. unser LSTM für unsere Forschungsfrage zu überprüfen, brauchen wir zusätzlich zu den Traininsdaten auch Testdaten. Diese sind aus den Monaten Februar, Mai, August und November von 2017. Im nachfolgenden Codechunk werden diese Testdaten genauso aggregiert wie oben die Traininsdaten.
 
 ```{r, eval=FALSE, echo=TRUE}
 # Dataframe für aggregierte Tesdaten erstellen
@@ -1760,7 +1708,6 @@ test_data_q2 <- test_data
 
 test_data_q2$gender <- NULL
 test_data_q2$usertype <- NULL
-
 
 #Datum trennen
 test_data_q2 <- test_data_q2 %>%
@@ -1814,12 +1761,8 @@ test_data_q2[is.na(test_data_q2$neighborhood),]
 #Der Bezirk von zwei Stationen ist nicht bekannt, fehlende Werte explizit machen
 test_data_q2$neighborhood <- fct_explicit_na(test_data_q2$neighborhood)
 
-
-
-
 #Spalte Neighborhood in character umwandeln, um nicht genutzte level zu eliminieren
 test_data_q2$neighborhood <- as.character(test_data_q2$neighborhood)
-
 
 test_data_q2$birth_year <- as.numeric(test_data_q2$birth_year)
 
@@ -1858,7 +1801,6 @@ test_data_q2 <- test_data_q2 %>%
 
 #Monat und Woche als Variablen eingefügt
 
-
 #test_data_q2 <- test_data_q2 %>%
   #mutate(week = week(start_date))
 
@@ -1872,18 +1814,15 @@ test_data_q2$month <- factor(test_data_q2$month, ordered = FALSE)
 
 #Als .RDS speichern
 saveRDS(test_data_q2, "Data/test_data_q2.RDS")
-
 ```
 
 ```{r}
 test_data_q2 <- read_rds("Data/test_data_q2.RDS")
 ```
 
+##### Aufbereitung Für Tägliche Analyse Für Ein Neighborhood
 
-
-#### Aufbereitung Für Tägliche Analyse für ein Neighborhood
-
-Als erstes werden die Daten neu aggregiert. Dazu filter ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods um die Zahl der Features zu minimieren.
+Als Erstes werden die Daten neu aggregiert. Dazu filtere ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus, um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods, um die Zahl der Features zu minimieren.
 
 ```{r}
 daily_neighborhood_train <- q2_starts_w2_agg %>%
@@ -1898,8 +1837,6 @@ daily_neighborhood_test <- test_data_q2 %>%
 daily_neighborhood_test$neighborhood <- NULL
 
 
-
-
 avg_anzahl <- daily_neighborhood_train %>%
   dplyr::select(anzahl)
 
@@ -1908,8 +1845,6 @@ avg_anzahl <- as.data.frame(avg_anzahl)
 avg_anzahl %>%
   summarise(avg_anzahl = mean(anzahl))
 ```
-
-
 
 ## Lineare Regression
 
@@ -1935,7 +1870,7 @@ linreg_q1_nh_train_rmse <- sqrt(mean((lin_reg_q1_nh$residuals)^2))
 linreg_q1_nh_train_rmse
 ```
 
-Die Anova deutet darauf hin, dass der Einfluss aller Variablen auf die Anzahl an Radfahrern statistisch signifikant ist, da der p-Wert äußerst gering ist. Die Funktion lm() hat zur Durchführung der Regression Dummyvariablen für den Bezirk den Wochentag, sowie den Monat erstellt. Sieht man sich die genaue Zusammenfassung des Modells an, wird sichtbar, dass der Einfluss vieler Bezirke statistisch nicht signifikant ist, d.h. zufällig ist. Sie werden dennoch nicht aus dem Modell entfernt, da sich sonst ein unvollständiges Bild der Situation ergeben würde, denn in diesen Bezirken gibt es auch Leihstationen, die genutzt werden. Alle anderen Variablen, mit Ausnahme des Monats Februar, haben ebenfalls einen signifikanten Einfluss auf die Nutzerzahl. 
+Die Anova deutet darauf hin, dass der Einfluss aller Variablen auf die Anzahl an Radfahrern statistisch signifikant ist, da der p-Wert äußerst gering ist. Die Funktion lm() hat zur Durchführung der Regression Dummyvariablen für den Bezirk, den Wochentag, sowie den Monat erstellt. Sieht man sich die genaue Zusammenfassung des Modells an, wird sichtbar, dass der Einfluss vieler Bezirke statistisch nicht signifikant, d.h. zufällig ist. Sie werden dennoch nicht aus dem Modell entfernt, da sich sonst ein unvollständiges Bild der Situation ergeben würde, denn in diesen Bezirken gibt es auch Leihstationen, die genutzt werden. Alle anderen Variablen, mit Ausnahme des Monats Februar, haben ebenfalls einen signifikanten Einfluss auf die Nutzerzahl. 
 
 Sieht man jedoch auf den Wert für R-Quadrat, der sich auf 0.3996 beläuft, wird klar, dass das Modell die Situation nicht in ihrer Vollständigkeit erfassen kann. Dieser Wert ist sehr niedrig und sagt aus, dass nur 39.96% der Varianz in den Daten durch dieses Regressionsmodell erklärt werden können. Wirft man einen Blick auf die Visualisierungen im Kapitel [Basis Visualisierungen] wird klar weshalb. Die lineare Regression kann nur in eine Richtung vorhersagen treffen. Z.B. Wenn sich x um 1 erhöht/verringert, erhöht/verringert sich y um z. Es ist jedoch zu sehen, dass die Zusammenhänge in den Daten nicht linearer Natur sind, denn wenn die Temperatur eine bestimmte Marke überschreitet fahren weniger Menschen mit dem Rad. Das Selbe lässt sich bei der Uhrzeit beobachten. Morgens fahren viele Menschen Rad, über Tag weniger und am Nachmittag wieder mehr, bis es in der Nacht wieder weniger wird. Es ist hier also wenig verwunderlich, dass ein lineares Modell den Einfluss der einzelnen Variablen nicht exakt wiedergibt.
 
@@ -2051,14 +1986,11 @@ options(max.print=450)
 model_q2_w2_agg <- as.formula(anzahl ~ .-start_date)
 lin_reg_q2_w2_agg <- lm(model_q2_w2_agg, q2_starts_w2_agg)
 summary(lin_reg_q2_w2_agg)
-
 ```
 
-Prediction
+Prediction.
 
 ```{r, eval=FALSE, echo=TRUE}
-
-
 #Vorhersage mit Testdaten
 lin_reg_q2_predictions <- predict(lin_reg_q2_w2_agg, test_data_q2)
 
@@ -2068,10 +2000,9 @@ test_q2_mse
 test_q2_rmse
 ```
 
+Der RMSE für alle Neighborhoods von der linearen Regression liegt bei 494,8. Das heißt, dass sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in Anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr variieren.
 
-Der RMSE für alle NEighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
-
-### Tägliche Lineare Regression für ein Neighborhood
+#### Tägliche Lineare Regression für ein Neighborhood
 
 Eine lineare Regression für das Neighborhood Chelsea zu den Nutzerzahlen pro Tag.
 
@@ -2084,8 +2015,6 @@ summary(lin_reg_daily_neighborhood)
 
 ```
 
-
-
 ```{r}
 #Vorhersage mit Testdaten
 lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
@@ -2096,8 +2025,7 @@ test_q2_mse
 test_q2_rmse
 ```
 
-Wir bekommen einen RMSE von 2257. D.h. das die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen um zu gucken ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
-
+Wir bekommen einen RMSE von 2257. D.h., dass die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen, um zu gucken, ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
 
 ```{r}
 daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
@@ -2115,10 +2043,7 @@ ggplot() +
   scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
 ```
 
-Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden aber die Werte Leider zu stark abweichen. Wie oben schon erwähnt müsste man diese Regression erst optimieren damit sie Aussagekräftig ist.  
-
-
-
+Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden, aber die Werte leider zu stark abweichen. Wie oben schon erwähnt, müsste man diese Regression erst optimieren, damit sie aussagekräftig ist.  
 
 ## Künstliches Neuronales Netz
 
@@ -2126,11 +2051,11 @@ Zur Vorhersage der Nutzerzahlen pro Tag und pro Stunde wird eine spezielle Form 
 
 Sowohl die täglichen Daten, als auch die stündlichen Daten stellen eine multivariate Zeitreihe dar. Dies bedeutet, dass eine Größe y, hier die Nutzeranzahl, im Zeitablauf, hier Tage bzw. Stunden, nicht nur von der Zeit an sich abhängt, sondern zusätzlich auch von weiteren Features x, hier z.B. das Quartal oder die Temperatur. 
 
-Um gute Vorhersageergebnisse zu erzielen sind hier besondere Schritte notwendig, bevor die Daten in das LSTM Netz eingespeist werden.
+Um gute Vorhersageergebnisse zu erzielen, sind hier besondere Schritte notwendig, bevor die Daten in das LSTM Netz eingespeist werden.
 
 Zunächst wird die Größe y, hier die Nutzeranzahl, stationarisiert. Das bedeutet, dass anstelle der realen Werte die Differenzen von einem Zeitpunkt zum nächsten betrachtet werden, also der Nutzerzuwachs oder -verlust. Dies wird gemacht und schein-korrelativen und schein-regressiven Effekten vorzubeugen und Trends und Saisonalitäten aus der Zeitreihe zu eliminieren.
 
-Außerdem werden lags für die weiteren Features x erstellt. Dies bedeutet, dass alle Werte einer Periode t eine Periode nach hinten in die Periode t+1 verschoben werden. Alle features aus der Periode t, sowie die gelaggten features werden in den Berechnungen berücksichtigt. Dies erhöht die Anzahl der Features, die die Größe y beeinflussen. Wie viele lags pro Feature optimal sind kann mittels der Methode ARIMAX ermittelt werden. Es kann außerdem überlegt werden, ob für die differenzierten y-Werte ebenfalls lags gebildet werden, die dann als Features in die Periode t aufgenommen werden. Dies kann die Prognosegüte erhöhen, hat allerdings zur Folge, dass mehr Fälle ausgeschlossen werden, da sich durch die Verschiebung fehlende Werte in den ersten Zeilen ergeben. Aus der Anzahl der lags ergibt sich die Anzahl an Timesteps, die für das LSTM Netz eine wichtige Komponente ist. Im multivariaten Fall ergibt sich die Anzahl der Timesteps aus der Anzahl der lags+1. Jedes lag mit allen Variablen darin ergibt einen timestep. Die Periode t wird ebenfalls dazu gezählt.
+Außerdem werden Lags für die weiteren Features x erstellt. Dies bedeutet, dass alle Werte einer Periode t eine Periode nach hinten in die Periode t+1 verschoben werden. Alle features aus der Periode t, sowie die gelaggten features werden in den Berechnungen berücksichtigt. Dies erhöht die Anzahl der Features, die die Größe y beeinflussen. Wie viele lags pro Feature optimal sind kann mittels der Methode ARIMAX ermittelt werden. Es kann außerdem überlegt werden, ob für die differenzierten y-Werte ebenfalls Lags gebildet werden, die dann als Features in die Periode t aufgenommen werden. Dies kann die Prognosegüte erhöhen, hat allerdings zur Folge, dass mehr Fälle ausgeschlossen werden, da sich durch die Verschiebung fehlende Werte in den ersten Zeilen ergeben. Aus der Anzahl der Lags ergibt sich die Anzahl an Timesteps, die für das LSTM Netz eine wichtige Komponente ist. Im multivariaten Fall ergibt sich die Anzahl der Timesteps aus der Anzahl der Lags+1. Jedes Lag mit allen Variablen darin ergibt einen timestep. Die Periode t wird ebenfalls dazu gezählt.
 
 Die umstrukturierten Daten werden dann in die Form eines dreidimensionalen Arrays überführt, da LSTMs diese als Input erwarten. Das dann trainierte Modell sagt danach nicht die tatsächlichen y-Werte der Testdaten voraus, sondern die Differenzwerte von einer Periode zur nächsten. Dies muss am Ende umgerechnet werden, um ein Ergebnis zu erhalten, das leichter zu interpretieren und nützlich ist.
 
@@ -2167,7 +2092,9 @@ names(hourly_chelsea_test) <- str_replace_all(names(hourly_chelsea_test), c(" " 
 hourly_chelsea_test[,c(5, 9:40)] <- effectcoding(hourly_chelsea_test[,c(5, 9:40)])
 ```
 
-Um für die Trainingsdaten die optimale Anzahl an lags zu bestimmen, werden die vorbereiteten Trainingsdaten der auto.arima Funktion übergeben, die mit Hilfe der ARIMAX Methode die optimale Anzahl an lags ermittelt. Daraus wird dann die Anzahl der Timesteps generiert.
+#### ARIMAX
+
+Um für die Trainingsdaten die optimale Anzahl an Lags zu bestimmen, werden die vorbereiteten Trainingsdaten der auto.arima Funktion übergeben, die mit Hilfe der ARIMAX Methode die optimale Anzahl an Lags ermittelt. Daraus wird dann die Anzahl der Timesteps generiert.
 
 ```{r}
 # ARIMAX für Bestimmung der lags mit Trainingsdaten
@@ -2182,6 +2109,8 @@ hourly.ann.timesteps <- as.timesteps(hourly.ann.lags, type = "multivariate")
 ```
 
 Die optimale Laganzahl hier ist 5. Daraus ergibt sich eine Anzahl von Timesteps von 6. Diese gehen als Hyperparameter in das LSTM-Modell mit ein.
+
+#### Resampling Und Normalisieren Der Trainings- und Testdaten
 
 Nun wird die Anzahl der Radfahrer stationarisiert, sowie Lags für die Differnzreihe gebildet, die als weitere Features mit in das LSTM Modell eingehen sollen. Diese werden zu den Trainingsdaten hinzugefügt. Danach wird die y-Variable user_count_diff, sowie die Features getrennt voneinander geresampled, sodass die Lags in den Datensatz mitaufgenommen werden. Danach können sie wieder in einem Data Frame zusammengefasst werden. Danach wird das Datum und die Uhrzeit wieder hinzugefügt, um einen besseren Überblick über den Datensatz zu erhalten. Dies wird analog auch für die Testdaten durchgeführt.
 
@@ -2237,7 +2166,7 @@ hourly_y_test <- hourly_chelsea_test$user_count[12:NROW(hourly_chelsea_test)]
 hourly_y_prior_first_test <- hourly_chelsea_test$user_count[11]
 ```
 
-Im nächsten Schritt werden alle Variablen beider Datensätze, die keine Dummyvariablen sind normalisiert, damit keine unproportionalen Einflüsse einiger Variablen entstehen.
+Im nächsten Schritt werden alle Variablen beider Datensätze, die keine Dummyvariablen sind, normalisiert, damit keine unproportionalen Einflüsse einiger Variablen entstehen.
 
 ```{r}
 # Trainings- und Testdaten normalisieren
@@ -2266,9 +2195,9 @@ hourly.X.test <- hourly.df.test.norm[,-1]
 hourly.Y.test <- hourly.df.test.norm[,1]
 ```
 
-### Tägliche Daten Aufbereiten für alle Neighborhoods
+### Tägliche Daten Aufbereiten Für Alle Neighborhoods
 
-Vorbereiten des Datensatzes für ein LSTM
+Vorbereiten des Datensatzes für ein LSTM.
 
 ```{r, eval=FALSE, echo=TRUE}
 # Data Table variante
@@ -2289,18 +2218,15 @@ names(q2_starts_w_nn) <- str_replace_all(names(q2_starts_w_nn), c(" " = "_"))
 #q2_starts_w_nn[,c(11:670)] <- effectcoding(q2_starts_w_nn[,c(11:670)])
 ```
 
-Funktioniert nicht! Da zuviele Features, RStudio zu abstürzen bringt.
+Funktioniert nicht! Da zuviele Features das RStudio zum Abstürzen bringt.
 
+Neue Variante mit Neighborhoods.
 
+#### Trainingdaten Für LSTM Vorbereiten
 
-Neue Variante mit neighborhoods.
-
-#### Trainingdaten für LSTM vorbereiten
-
-Dummyvariablen erstellen und bearbeiten um sie dann zu effektcodieren. 
+Dummyvariablen erstellen und bearbeiten, um sie dann zu effektcodieren. 
 
 ```{r}
-
 # Data Table variante
 #library(data.table)
 
@@ -2322,12 +2248,11 @@ q2_starts_w2_nn[,c(11:76)] <- effectcoding(q2_starts_w2_nn[,c(11:76)])
 
 ```
 
-#### Testdaten für LSTM vorbereiten
+#### Testdaten Für LSTM Vorbereiten
 
-Gleiche schritte wie bei den Trainingsdaten
+Gleiche Schritte wie bei den Trainingsdaten durchführen.
 
 ```{r}
-
 # Data Table variante
 #test_data_q2_nn <- as.data.table(test_data_q2)
 
@@ -2345,7 +2270,7 @@ names(test_data_q2_nn) <- str_replace_all(names(test_data_q2_nn), c(" " = "_"))
 test_data_q2_nn[,c(11:68)] <- effectcoding(test_data_q2_nn[,c(11:68)])
 ```
 
-Vergleich der Datensätze
+Vergleich der Datensätze.
 
 ```{r}
 df1 <- colnames(test_data_q2_nn)
@@ -2366,9 +2291,9 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 rm(df1,df2)
 ```
 
-#### Arimax für alle Neighborhoods tägliche Nutzer
+#### ARIMAX Für Alle Neighborhoods Tägliche Nutzer
 
-Aufwand zu groß alle Neighborhoods in einem Netz vorraussagen
+Aufwand zu groß alle Neighborhoods in einem Netz vorauszusagen.
 
 ```{r, eval=FALSE, echo=TRUE}
 # Build ARIMAX model for training Data
@@ -2387,7 +2312,7 @@ non_seasonal_diff_order <- arx$arma[6] #d
 seasonal_diff_order <- arx$arma[7]
 ```
 
-#### LSTM für alle Neighborhoods tägliche Nutzer
+#### LSTM Für Alle Neighborhoods Tägliche Nutzer
 
 ```{r, eval=FALSE, echo=TRUE}
 ######
@@ -2408,14 +2333,13 @@ tsdiff <- as.data.frame(build_stationary(q2_starts_w2_nn$anzahl, k = ann.lags))
 
 df.ann <- cbind.data.frame(q2_starts_w2_nn[c((ann.lags+2):nrow(q2_starts_w2_nn)),], tsdiff)
 df.ann <- df.ann[,c(1:4,45:49,5:44)]
-
 ```
 
-Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
+Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen, erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
 
 ### Long Short Term Memory Netz für stündliche Daten Erstellen
 
-Bevor das Modell endgültig erstellt und Trainiert werden kann, werden die letzten Hyperparameter festgelegt. Nach sehr vielen Versuchen haben eine Batchsize von 1 und eine Epochenanzahl von 120 das beste Ergebnis erzielt.
+Bevor das Modell endgültig erstellt und trainiert werden kann, werden die letzten Hyperparameter festgelegt. Nach sehr vielen Versuchen haben eine Batchsize von 1 und eine Epochenanzahl von 120 das beste Ergebnis erzielt.
 
 ```{r}
 # Restliche Hyperparameter setzen
@@ -2423,7 +2347,7 @@ hourly.ann.epochs    <- 120
 hourly.ann.batchsize <- 1
 ```
 
-Die Fuktion fit_lstm erstellt nun das LSTM Modell und trainiert es anschließend mit den gesetzten Parametern. Als Inputdaten werden die X und Y Matrizen eingesetzt. Diese werden automatisch von der Funktion in dreidimensionale Arrays umgewandelt, die als Input erwartet werden. 
+Die Funktion fit_lstm erstellt nun das LSTM Modell und trainiert es anschließend mit den gesetzten Parametern. Als Inputdaten werden die X und Y Matrizen eingesetzt. Diese werden automatisch von der Funktion in dreidimensionale Arrays umgewandelt, die als Input erwartet werden. 
 
 Die Anzahl der Timesteps ist in diesem Fall 6 und wurde in der unten angegebenen Variable gespeichert. Auch die Anzahl der Epochen und die Batchsize wird angegeben. Die Batchsize wird unterteil in den Wert NA und die selbst festgelegte Größe. Dies ist der Fall, da das Netz hier auch in der Inputschicht eine Batchsize erwartet. Diese muss im Falle einer multivariaten Zeitreihe nicht zwingend angegeben werden und wird daher mit NA angegeben. 
 
@@ -2457,7 +2381,7 @@ hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
 
 ```
 
-Nun da das Netz trainiert ist, können die Nutzerzahlen der Tesdatenmenge vorhergesagt werden. Hier werden zunächst die Differenzen vorhergesagt und im Anschluss denormalisiert. Danach wird mit Hilfe der gespeicherten originalen Nutzerzahlen die Differenzierung invertiert, sodass statt der Differenzen die "tatsächlichen" Werte betrachtet werden. Danach wird wie bei der linearen Regression der RMSE berechnet.
+Nun, da das Netz trainiert ist, können die Nutzerzahlen der Tesdatenmenge vorhergesagt werden. Hier werden zunächst die Differenzen vorhergesagt und im Anschluss denormalisiert. Danach wird mit Hilfe der gespeicherten originalen Nutzerzahlen die Differenzierung invertiert, sodass statt der Differenzen die "tatsächlichen" Werte betrachtet werden. Danach wird wie bei der linearen Regression der RMSE berechnet.
 
 ```{r}
 # Nutzerdifferenzen vorhersagen
@@ -2497,11 +2421,9 @@ ggplot() +
 Die Grafik zeigt die stundengenaue Vorhersage der Nutzerzahlen je Monat im Testdatensatz. Die schwarze Linie zeigt die tatsächlichen Nutzerzahlen, die blaue Linie die Vorhergesagten. Es ist zu sehen, dass beide Linien fast deckungsgleich verlaufen. Teilweise weichen die prognostizierten Werte geringfügig von den Spitzen ab. Das Ergebnis ist jedoch als sehr gut zu beurteilen.
 
 
-### Long Short Term Memory Netz für tägliche Daten für ein Neighborhood
+### Long Short Term Memory Netz Für Tägliche Daten Für Ein Neighborhood
 
-
-
-#### TrainDaten fürs LSTM Vorbereiten
+#### Traininsdaten Für Das LSTM Vorbereiten
 
 Es wird ein Dataframe für das LSTM erstellt. Dieser wir dummyfiziert und effektcodiert.
 
@@ -2521,33 +2443,24 @@ names(daily_neighborhood_train_nn) <- str_replace_all(names(daily_neighborhood_t
 daily_neighborhood_train_nn[,c(11:28)] <- effectcoding(daily_neighborhood_train_nn[,c(11:28)])
 ```
 
+#### Testdaten Für Das LSTM Vorbereiten
 
-#### TestDaten fürs LSTM vorbereiten
-
-Das gleiche einmal für die Testdaten. Da die Datensätze von den Features gleich sein müssen um später im LSTM keine Fehler zu verursachen, füge ich die fehlenden Variablen ein damit sie später in der dummyfizierung als Spalten auftreten.
+Das Gleiche einmal für die Testdaten. Da die Datensätze von den Features gleich sein müssen, um später im LSTM keine Fehler zu verursachen, füge ich die fehlenden Variablen ein damit sie später in der Dummyfizierung als Spalten auftreten.
 
 ```{r}
 # Dataframe für LSTM erstellen
 
 daily_neighborhood_test_nn <- daily_neighborhood_test
 
-# Wegen gleichheit tricksen
-
-
-
-
+# Wegen Gleichheit tricksen
 
 df_addrows <- data.frame(start_date= as_date(c("2017-01-01", "2017-03-01", "2017-04-01", "2017-06-01", "2017-07-01", "2017-09-01", "2017-10-01", "2017-12-01")), anzahl = c(NA,NA,NA,NA,NA,NA,NA,NA), avg_tripduration = c(NA,NA,NA,NA,NA,NA,NA,NA), avg_age = c(NA,NA,NA,NA,NA,NA,NA,NA), maximum.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), minimum.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), average.temperature = c(NA,NA,NA,NA,NA,NA,NA,NA), precipitation = c(NA,NA,NA,NA,NA,NA,NA,NA), snow.fall = c(NA,NA,NA,NA,NA,NA,NA,NA), snow.depth = c(NA,NA,NA,NA,NA,NA,NA,NA), weekday = c("Montag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag","Donnerstag"), holiday = c(NA,NA,NA,NA,NA,NA,NA,NA), month = c("Januar", "März", "April", "Juni", "Juli", "September", "Oktober", "Dezember"))
-
-
 
 daily_neighborhood_test_nn <- rbind(daily_neighborhood_test_nn, df_addrows)
 
 daily_neighborhood_test_nn <- daily_neighborhood_test_nn %>% arrange(start_date)
 
 #Dummyvariablen erstellen
-
-
 
 daily_neighborhood_test_nn <- dummy_cols(daily_neighborhood_test_nn, c("weekday", "month"), remove_first_dummy = F, remove_selected_columns = T)
 
@@ -2564,11 +2477,9 @@ names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_te
 daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn[,c(11:28)])
 ```
 
+#### ARIMAX Für Ein Neighborhood
 
-
-#### Arimax für ein Neighborhood
-
-Mit Arimax findet man die optimalen Lags für ein LSTM Netz. Es ergibt sich ein optimaler LAg von 1.
+Mit Arimax findet man die optimalen Lags für ein LSTM Netz. Es ergibt sich ein optimaler Lag von 1.
 
 ```{r}
 # Baue ARIMAX Model für Trainingsdaten
@@ -2587,9 +2498,9 @@ non_seasonal_diff_order <- n.arx$arma[6] #d
 seasonal_diff_order <- n.arx$arma[7]
 ```
 
-#### LSTM für ein Neighborhood
+#### LSTM Für Ein Neighborhood
 
-Nun kommen wir zum Herzstück unserer Forschungsfrage, dem LSTM. Als erstes setze ich hier die Hyperparameter fest. Ich habe mich nach etlichen Probeläufen für eine Epochenanzahl von 200 und eine Batchsize von 2 entschieden. Der Lag und der Timestep sind vorgegeben durch ARIMAX. Ich nehme Nutzeranzahl und baue daraus eine stationäre Reihe und füge dieser einen Lag hinzu. 
+Nun kommen wir zum Herzstück unserer Forschungsfrage, dem LSTM. Als erstes setze ich hier die Hyperparameter fest. Ich habe mich nach etlichen Probeläufen für eine Epochenanzahl von 200 und eine Batchsize von 2 entschieden. Der Lag und der Timestep sind vorgegeben durch ARIMAX. Ich nehme die Nutzeranzahl und baue daraus eine stationäre Reihe und füge dieser einen Lag hinzu. 
 
 ```{r}
 ######
@@ -2629,7 +2540,7 @@ df.train    <- df.resample
 
 ```
 
-Einmal die stationären Daten einfügen und das Resamplen für die Testdaten
+Einmal die stationären Daten einfügen und das Resamplen für die Testdaten durchführen.
 
 ```{r}
 tsdiff_t <- as.data.frame(build_stationary(daily_neighborhood_test_nn$anzahl, k = ann.lags))
@@ -2657,17 +2568,14 @@ df.test     <- df.resample_t
 
 ```
 
-Nachdem jetzt die Trainingsdaten und die Testdaten fertig sind kann ich die Originaldaten speichern um später diese zu Nutzen um zu redifferenzieren. Danach normalisiere ich die Daten in den ausgewählten Spalten. Danach extrahiere ich die X und die Y Daten jeweils für die Trainings- und Testdaten
+Nachdem jetzt die Trainingsdaten und die Testdaten fertig sind, kann ich die Originaldaten speichern um später diese zu nutzen, um zu redifferenzieren. Danach normalisiere ich die Daten in den ausgewählten Spalten. Danach extrahiere ich die X- und die Y-Daten jeweils für die Trainings- und Testdaten.
 
 ```{r}
 test.start <- as.POSIXct("2017-02-04")
 
-
 # Speichere original y Werte und den vorherrigen Wert des ersten Testwertes
 y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_date >= test.start)] # original Bike Werte
 y_prior_first_test <- daily_neighborhood_test_nn$anzahl[which(daily_neighborhood_test_nn$start_date == test.start)-1] # für das redifferencing
-
-
 
 # Normalisiere trainings und test Datensets bis auf das Datum und die Dummy-Features
 selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1", "avg_tripduration_1", "avg_age_1",
@@ -2679,21 +2587,13 @@ selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1",
                                                   ))
 nd <- normalize_data(df.train[,selected_columns], df.test[,selected_columns])   #  c(2:11,22:30)
 
-
-
-
 df.train.norm <- df.train
 df.train.norm[, selected_columns] <- nd$train
 df.train.norm <- df.train.norm[,-1]
 
-
-
 df.test.norm <- df.test
 df.test.norm[, selected_columns] <- nd$test
 df.test.norm <- df.test.norm[,-1]
-
-
-
 
 # Extrahiere X und Y Daten
 X.train <- df.train.norm[,-1]
@@ -2701,13 +2601,11 @@ Y.train <- df.train.norm[,1]
 
 X.test <- df.test.norm[,-1]
 Y.test <- df.test.norm[,1]
-
-
 ```
 
 #### Build Model
 
-Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
+Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt, muss man verschiedene Konstellationen ausprobieren, um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechunk habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch einen RMSE von 50 erreicht. Das ist eine durchschnittliche Fehlerquote von 50 Personen pro Tag, bei im Durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h., dass Netz macht seine Vorhersage mit 98,72 % richtig. Beim Trainieren ist mir aufgefallen, dass bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke, dass hier sogar noch bessere Ergebnisse möglich sind, wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
 ```{r}
 # Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35
@@ -2727,7 +2625,7 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ```
 
-Speichere das Model
+Speichere das Model.
 
 ```{r}
 #lstm %>% save_model_hdf5("LSTM_Daily")
@@ -2786,10 +2684,9 @@ ggplot() +
 
 ### Tägliche Vorhersage
 
-Im unteren Plot sieht man wie die Validation Score mit der Anzahl an Epochen abnimmt.
+Im unteren Plot sieht man wie der Validation Score mit der Anzahl an Epochen abnimmt.
 
 ```{r}
-
 average_mae_history <- lstm$avg_qual
 
 require(ggplot2)
@@ -2814,7 +2711,7 @@ ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
         axis.line = element_line(colour = "black"))
 ```
 
-Nun machen wir die Vorhersage und berechnen den RMSE. Außerdem denormalisieren und dedifferenziren wir damit wir die echten Werte haben zum präsentieren.
+Nun machen wir die Vorhersage und berechnen den RMSE. Außerdem denormalisieren und dedifferenzieren wir, damit wir die echten Werte haben zum Präsentieren.
 
 ```{r}
 # Nutzerdifferenzen vorhersagen

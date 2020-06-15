@@ -407,7 +407,16 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
   - Durchschnittlicher Fehler von rund `r round(lstm_rmse)` Nutzern pro Tag
   
 ```{r, fig.align='center', fig.height=10, fig.width=8}
-#hier fehlt die Grafik für das LSTM
+ggplot() +
+  labs(title = "LSTM Forecasting for Bikeusers") +
+  xlab("Date") + ylab("Bikeuser") +
+  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
 ```
 
 
