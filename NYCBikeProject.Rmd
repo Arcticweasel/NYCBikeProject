@@ -28,7 +28,7 @@ library(gridExtra)
 library(geojsonio)
 library(move)
 library(moveVis)
-library(dplyr)
+
 
 
 source("Routinen/ANNUtils.r")
@@ -846,7 +846,6 @@ dev.off()
 ```
 
 ![Durchschnittliche_Nutzeranzahl_Pro_Wochentag](Grafiken/Durchschnittliche_Nutzeranzahl_Pro_Wochentag.png)
-![Durchschnittliche Fahrtdauer Pro Wochentag](Grafiken/Durchschnittliche_Fahrtdauer_Pro_Wochentag.png)
 
 Betrachtet man zunächst die Nutzerzahlen pro Wochentag, so fällt auf, dass diese unter der Woche höher sind als am Wochenende. Dies lässt darauf schließen, dass viele Kuden das Rad nutzen, um zur Arbeit, zur Schule oder zu Universität zu fahren.
 Im Gegensatz hierzu steht die durchschnittliche Dauer einer Fahrt. Die Fahrtdauer ist mit 15 Minuten am Samstag am höchsten. Dies könnte darauf schließen lassen, dass die Fahrtwege, die zur Arbeit zurückgelegt werden etwas kürzer sind, als diejenigen, die zu Freizeitzwecken zurückgelegt werden. Es kann jedoch nicht abschließend geklärt werden, ob dies tatsächlich der Fall ist, da über die Kunden ausßer ihrem Alter, Geschlecht und Abo-Status nichts bekannt ist. Des Weiteren sind die Unterschiede in der Fahrtdauer mit einigen Minuten nicht sehr groß.
@@ -1077,7 +1076,7 @@ GeoJSON laden, umformen für GGPLOT und einmal ausgeben
 ```{r}
 nyc_neighborhoods <- readRDS("Data/GEOJSON.rds")
 
-# tidy neighbourhoods from spatial polygon data frame into plain data frame to use it with ggplot
+# tidy neighborhoods von spatial polygon data frame in ein plain data frame um es mit ggplot zu nutzen
 
 nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
 
@@ -1091,7 +1090,7 @@ ggplot() +
 Ausgabe der Spartial Data mit LEaflet
 
 ```{r}
-# use leaflet with neighbourhoods
+# benutze leaflet mit neighbourhoods
 
 leaflet(nyc_neighborhoods) %>%
   addTiles() %>% 
@@ -1101,10 +1100,10 @@ leaflet(nyc_neighborhoods) %>%
 ```
 
 
-Einmal Stations als points definieren und in einen spatial polygon dataframe umformen
+Einmal Stations als points definieren und in einen spatial polygon dataframe umformen.
 
 ```{r}
-# load stations as points
+# lade stations als points
 
 points <- stations %>%
   dplyr::select(start_station_longitude.x, start_station_latitude.x, totalusers)
@@ -1113,7 +1112,7 @@ points$start_station_name <- as.factor(points$start_station_name)
 
 points <- as.data.frame(points)
 
-# format points into a spatial polygon data frame
+# formatiere points in ein spatial polygon data frame
 
 points_spdf <- points
 coordinates(points_spdf) <- ~start_station_longitude.x + start_station_latitude.x
@@ -1137,7 +1136,8 @@ map_data <- geo_join(nyc_neighborhoods, points_by_neighborhood, "neighborhood", 
 pal <- colorNumeric(palette = "RdBu",
                     domain = range(map_data@data$userperneighborhood, na.rm=T))
 
-# look on the map with the stations and neighborhoods
+
+# Karte angucken mit Stationen und Neighborhoods
 
 leaflet(map_data) %>%
   addTiles() %>% 
@@ -1166,17 +1166,21 @@ addLegend( pal=pal, values=~userperneighborhood, opacity=0.9, title = "Totaluser
 ```
 
 
-Eine Karte mit Stationen ohne Neighborhoods aber mit Einfärbung der Stationen nach Nutzerzahlen
+Eine Karte mit Stationen ohne Neighborhoods aber mit Einfärbung der Stationen nach Nutzerzahlen.
 
 
 ```{r}
 
 
-# Create a color palette with handmade bins.
+
+# Eigene color Palette mit eigenen Reichweiten
+
 mybins <- seq(1000, 50000, by=5000)
 mypalette <- colorBin( palette="YlOrBr", domain=stations$totalusers, na.color="transparent", bins=mybins)
 
-# Prepare the text for the tooltip:
+
+# Text für Tooltip preperieren
+
 mytext <- paste(
    "Name: ", stations$start_station_name, "<br/>", 
    "Totalusers: ", stations$totalusers, sep="") %>%
@@ -1184,7 +1188,7 @@ mytext <- paste(
 
  
 
-# create Map
+# Map kreieren
 m <- leaflet(stations) %>% 
   addTiles()  %>% 
   setView( lat=40, lng=-74 , zoom=4) %>%
@@ -1195,7 +1199,7 @@ m <- leaflet(stations) %>%
                                                 direction = "auto")) %>%
   addLegend( pal=mypalette, values=~totalusers, opacity=0.9, title = "Totalusers", position = "bottomright" )
 
-# load map
+# Map laden
 
 m 
 ```
@@ -1224,8 +1228,6 @@ basemap %>%
   ) %>%
   setView(-73.98, 40.75, zoom = 13)
 
-
-?addMinicharts
 ```
 Bei der Animation animiert er nur den ersten Tag und danach keinen weiteren Tag. Problem wurde in der nächsten Animation durch andere Aggregation gelöst.
 
@@ -1275,7 +1277,7 @@ newTest_agg <- newTest %>%
 saveRDS(newTest_agg, "Data/newTest_agg.rds")
 ```
 
-Diese Daten speichere ich in einer RDS und LAde sie wieder damit ich den Codechunk nicht immer ausführen muss.
+Diese Daten speichere ich in einer RDS und lade sie wieder damit ich den Codechunk nicht immer ausführen muss.
 
 Load Data
 
@@ -1283,7 +1285,7 @@ Load Data
 newTest_agg <- readRDS("Data/newTest_agg.rds")
 ```
 
-Nun versuche ich die Animation mit dem neuen Datensatz.
+Nun eine Animation der Nutzerzahlen der eizelnen Neighborhoods mit dem neuen Datensatz.
 
 ```{r}
 basemap %>%
@@ -1464,7 +1466,7 @@ q2_starts_w <- left_join(q2_starts, weather, by = c("date_start" = "date"))
 
 ```
 
-Aggregation eines Datensatzes mit Neighborhoods
+Aggregation eines Datensatzes mit Neighborhoods. Wir joinen stations mit q2_stats_w und ersetzen fehlenden Bezirk.
 
 ```{r}
 points1 <- points %>%
@@ -1483,7 +1485,7 @@ q2_starts_w$neighborhood <- fct_explicit_na(q2_starts_w$neighborhood)
 ```
 
 
-Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holidy Feature.
+Als nächstes füge ich die Wochentag Variable ein und erstelle ein Holiday Feature.
 
 ```{r, eval=FALSE, echo=TRUE}
 
@@ -1577,7 +1579,7 @@ q2_starts_w2_agg <- read_rds("Data/q2_starts_w2_agg.RDS")
 
 
 ### Testdaten
-
+#### Allgemeine Aggregation der Testdaten
 Um die Vorhersagegenauigkeit der nachfolgenden Modelle zu testen, werden Testdaten benötigt. Da alle Modelle mit den Daten des gesamten Jahres 2016 lernen, soll mit Daten aus dem Jahr 2017 getestet werden. Um alle Jahreszeiten angemessen zu betrachten, werden die Monate Februar, Mai, August und November ausgewählt. Um Speicherplatz zu sparen, werden diese im Format .RDS gespeichert.
 
 ```{r, eval=FALSE, echo=TRUE}
@@ -2000,7 +2002,7 @@ ggplot() +
 
 ### Tägliche Regression
 
-
+Hier eine tägliche Reggression für alle Stationen/Neighborhoods.
 
 ```{r}
 q2_starts_w2_agg <- q2_starts_w2_agg %>%
@@ -2019,7 +2021,7 @@ summary(lin_reg_q2)
 ```
 
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 #Regression mit q2_starts_w2_agg
 options(max.print=450)
 model_q2_w2_agg <- as.formula(anzahl ~ .-start_date)
@@ -2031,7 +2033,7 @@ summary(lin_reg_q2_w2_agg)
 
 Prediction
 
-```{r}
+```{r, eval=FALSE, echo=TRUE}
 
 
 #Vorhersage mit Testdaten
@@ -2042,7 +2044,7 @@ test_q2_rmse <- sqrt(mean((test_data_q2$anzahl - lin_reg_q2_predictions) ^ 2))
 test_q2_mse
 test_q2_rmse
 ```
-
+Der RMSE für alle NEighborhoods von der linearen Regression liegt bei 494,8 . Das heißt das sich die lineare Regression um ca 500 Nutzer pro Neighborhood pro Tag verschätzt. Dies ist in anbetracht der großen Datenmenge und der vielen Features ein guter Wert. Wenn man von ca. 3000 - 5000 Nutzern pro Station pro Tag ausgeht verschätzt sich die Regression um ca. 10-20%. Dies sind nur geschätzte Werte da die genauen Zahlen sehr varrieren.
 
 
 ## Künstliches Neuronales Netz
@@ -2192,9 +2194,9 @@ hourly.Y.test <- hourly.df.test.norm[,1]
 ```
 
 
-### Tägliche Daten Aufbereiten
+### Tägliche Daten Aufbereiten für alle Neighborhoods
 
-Vorbereiten der des anderen DAtensatzes
+Vorbereiten des Datensatzes für ein LSTM
 
 ```{r, eval=FALSE, echo=TRUE}
 # Data Table variante
@@ -2215,13 +2217,15 @@ names(q2_starts_w_nn) <- str_replace_all(names(q2_starts_w_nn), c(" " = "_"))
 #q2_starts_w_nn[,c(11:670)] <- effectcoding(q2_starts_w_nn[,c(11:670)])
 ```
 
-Funktioniert nicht!
+Funktioniert nicht! Da zuviele Features, RStudio zu abstürzen bringt.
 
 
 
 Neue Variante mit neighborhoods.
 
 #### Trainingdaten für LSTM vorbereiten
+
+Dummyvariablen erstellen und bearbeiten um sie dann zu effektcodieren. 
 
 ```{r}
 
@@ -2247,6 +2251,8 @@ q2_starts_w2_nn[,c(11:76)] <- effectcoding(q2_starts_w2_nn[,c(11:76)])
 ```
 
 #### Testdaten für LSTM vorbereiten
+
+Gleiche schritte wie bei den Trainingsdaten
 
 ```{r}
 
@@ -2287,7 +2293,7 @@ test_data_q2_nn$'neighborhood_Prospect-Lefferts_Gardens' <- NULL
 
 rm(df1,df2)
 ```
-#### Arimax für alle Neighborhoods
+#### Arimax für alle Neighborhoods tägliche Nutzer
 
 Aufwand zu groß alle Neighborhoods in einem Netz vorraussagen
 
@@ -2308,9 +2314,9 @@ non_seasonal_diff_order <- arx$arma[6] #d
 seasonal_diff_order <- arx$arma[7]
 ```
 
-#### LSTM für alle Neighborhoods
+#### LSTM für alle Neighborhoods tägliche Nutzer
 
-Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
+
 ```{r, eval=FALSE, echo=TRUE}
 ######
 # LSTM
@@ -2333,7 +2339,9 @@ df.ann <- df.ann[,c(1:4,45:49,5:44)]
 
 ```
 
-#### LSTM für ein Neighborhood
+Uns ist beim kreieren des Datensatzes für das LSTM aufgefallen, dass wir durch die vielen Neighborhoods ein Problem kriegen. Deswegen sind wir zu dem Punkt gekommen erstmal ein LSTM für ein Neighborhood exemplarisch zu bauen.
+
+
 
 ### Long Short Term Memory Netz für stündliche Daten Erstellen
 
@@ -2403,7 +2411,7 @@ Der RMSE verändert sich geringfügig mit jedem Mal, das das Netz lernt, bewegt 
 # Visualisierung der Ergebnisse
 hourly_graphdata <- data.frame(Date = hourly.df.test$start_datetime, Value = hourly_testseries, Predictions = hourly_predictions, LinReg = hourly_chelsea_lin_reg_predictions[12:NROW(hourly_chelsea_lin_reg_predictions)])
 ggplot() +
-  labs(title = "LSTM: Vorhersage Stündlicher Nutzerzahlen") +
+  labs(title = "LSTM Vorhersage Stündliche Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
   geom_line(data = hourly_graphdata, aes(y = Value, x = Date, color = "black")) +
   geom_line(data = hourly_graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
@@ -2419,7 +2427,9 @@ ggplot() +
 Die Grafik zeigt die stundengenaue Vorhersage der Nutzerzahlen je Monat im Testdatensatz. Die schwarze Linie zeigt die tatsächlichen Nutzerzahlen, die blaue Linie die Vorhergesagten. Es ist zu sehen, dass beide Linien fast deckungsgleich verlaufen. Teilweise weichen die prognostizierten Werte geringfügig von den Spitzen ab. Das Ergebnis ist jedoch als sehr gut zu beurteilen.
 
 
-Als erstes werden die Daten neu aggregiert
+### Neue Aggregation für einen Neighborhood
+
+Als erstes werden die Daten neu aggregiert. Dazu filter ich aus den schon aggregierten Daten des Neighborhoods Chelsea raus um uns auf diese zu konzentrieren. Danach lösche ich die Spalte Neighborhoods um die Zahl der Features zu minimieren.
 
 ```{r}
 daily_neighborhood_train <- q2_starts_w2_agg %>%
@@ -2434,50 +2444,20 @@ daily_neighborhood_test <- test_data_q2 %>%
 daily_neighborhood_test$neighborhood <- NULL
 
 
+
+
+avg_anzahl <- daily_neighborhood_train %>%
+  dplyr::select(anzahl)
+
+avg_anzahl$date <- NULL
+avg_anzahl <- as.data.frame(avg_anzahl)
+avg_anzahl %>%
+  summarise(avg_anzahl = mean(anzahl))
 ```
 
-Regression
+#### TrainDaten fürs LSTM Vorbereiten
 
-```{r}
-#Regression mit daily_neighborhood_train
-options(max.print=450)
-daily_neighborhood_model <- as.formula(anzahl ~ .)
-lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
-summary(lin_reg_daily_neighborhood)
-
-```
-
-
-
-```{r}
-#Vorhersage mit Testdaten
-lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
-
-test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
-test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
-test_q2_mse
-test_q2_rmse
-```
-
-```{r}
-daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
-ggplot() +
-  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
-  xlab("Date") + ylab("Anzahl") +
-  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
-  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))+
-  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
-  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
-```
-
-
-
-TrainDaten fürs LSTM Vorbereiten
+Es wird ein Dataframe für das LSTM erstellt. Dieser wir dummyfiziert und effektcodiert.
 
 ```{r}
 # Dataframe für LSTM erstellen
@@ -2496,7 +2476,9 @@ daily_neighborhood_train_nn[,c(11:28)] <- effectcoding(daily_neighborhood_train_
 ```
 
 
-TestDaten fürs LSTM vorbereiten
+#### TestDaten fürs LSTM vorbereiten
+
+Das gleiche einmal für die Testdaten. Da die Datensätze von den Features gleich sein müssen um später im LSTM keine Fehler zu verursachen, füge ich die fehlenden Variablen ein damit sie später in der dummyfizierung als Spalten auftreten.
 
 ```{r}
 # Dataframe für LSTM erstellen
@@ -2536,11 +2518,57 @@ names(daily_neighborhood_test_nn) <- str_replace_all(names(daily_neighborhood_te
 daily_neighborhood_test_nn[,c(11:28)] <- effectcoding(daily_neighborhood_test_nn[,c(11:28)])
 ```
 
+### Lineare Regression für ein Neighborhood
 
-Arimax
+Eine lineare Regression für das Neighborhood Chelsea zu den Nutzerzahlen pro Tag.
 
 ```{r}
-# Build ARIMAX model for training Data
+#Regression mit daily_neighborhood_train
+options(max.print=450)
+daily_neighborhood_model <- as.formula(anzahl ~ .)
+lin_reg_daily_neighborhood <- lm(daily_neighborhood_model, daily_neighborhood_train)
+summary(lin_reg_daily_neighborhood)
+
+```
+
+
+
+```{r}
+#Vorhersage mit Testdaten
+lin_reg_q2n_predictions <- predict(lin_reg_daily_neighborhood, daily_neighborhood_test)
+
+test_q2_mse <- mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2)
+test_q2_rmse <- sqrt(mean((daily_neighborhood_test$anzahl - lin_reg_q2n_predictions) ^ 2))
+test_q2_mse
+test_q2_rmse
+```
+Wir bekommen einen RMSE von 2257. D.h. das die Vorhersage der Regression um ca 2257 Nutzer daneben liegt pro Tag. Dies ist ein sehr schlechtes Ergebnis. Man könnte jetzt Features entfernen die nicht statistisch signifikant sind und die Regression erneut durchlaufen lassen um zu gucken ob dies zu einer Verbesserung führt. Ich überspringe diesen Punkt und gehe weiter zur Visualisierung und zum LSTM.
+
+
+```{r}
+daily_vizdata <- data.frame( Date = daily_neighborhood_test$start_date, Values = daily_neighborhood_test$anzahl, LinReg = lin_reg_q2n_predictions)
+ggplot() +
+  labs(title = "Lineare Regression Vorhersage Täglicher Nutzerzahlen") +
+  xlab("Date") + ylab("Anzahl") +
+  geom_line(data = daily_vizdata, aes(y = Values, x = Date, color = "black")) +
+  geom_line(data = daily_vizdata, aes(y = LinReg, x = Date, color = "orange")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))+
+  facet_wrap(month(daily_neighborhood_test$start_date, label = T, abbr = F), scales = "free_x") +
+  scale_color_manual(name = "Legende", values = c("black" = "black", "orange" = "orange"), labels = c("Tatsächliche Nutzer", "Lineare Regression Vorhersage"))
+```
+
+Man kann in der Vorhersage sehen das die Schwankungen von der Regression erkannt werden aber die Werte Leider zu stark abweichen. Wie oben schon erwähnt müsste man diese Regression erst optimieren damit sie Aussagekräftig ist.  
+
+### Arimax
+
+Mit Arimax findet man die optimalen Lags für ein LSTM Netz. Es ergibt sich ein optimaler LAg von 1.
+
+```{r}
+# Baue ARIMAX Model für Trainingsdaten
 require(forecast)
 n.arx.Y <- daily_neighborhood_train_nn$anzahl
 n.arx.X <- as.matrix(daily_neighborhood_train_nn[,c(3:28)])
@@ -2556,19 +2584,21 @@ non_seasonal_diff_order <- n.arx$arma[6] #d
 seasonal_diff_order <- n.arx$arma[7]
 ```
 
-LSTM
+### LSTM
+
+Nun kommen wir zum Herzstück unserer Forschungsfrage, dem LSTM. Als erstes setze ich hier die Hyperparameter fest. Ich habe mich nach etlichen Probeläufen für eine Epochenanzahl von 200 und eine Batchsize von 2 entschieden. Der Lag und der Timestep sind vorgegeben durch ARIMAX. Ich nehme Nutzeranzahl und baue daraus eine stationäre Reihe und füge dieser einen Lag hinzu. 
 
 ```{r}
 ######
 # LSTM
 
 # Hyperparameters
-ann.epochs    <- 100
-ann.batchsize <- 20
+ann.epochs    <- 200
+ann.batchsize <- 2
 ann.lags <- as.lags(non_seasonal_ar_order, type = "multivariate")
 ann.timesteps <- as.timesteps(ann.lags, type = "multivariate")
 
-# Transform y (= price) into stationary and create lagged dataset
+# Transform y (= anzahl) into stationary and create lagged dataset
 tsdiff <- as.data.frame(build_stationary(daily_neighborhood_train_nn$anzahl, k = ann.lags))
 if (ann.lags > 0) {
   tsdiff <- tsdiff[c(-1:-ann.lags),]
@@ -2579,14 +2609,16 @@ df.ann <- cbind.data.frame(daily_neighborhood_train_nn[c((ann.lags+2):nrow(daily
 df.ann <- df.ann[,c(1:2,29:30,3:28)]
 ```
 
+Resamplen der stationären Daten und hinzufügen von Datuminformation für die spätere Auswertung.
+
 ```{r}
-# Resampling stationary data because of exogenous variables for working with LSTM
+# Neusortieren von stationären Daten weil die Variablen exogen sein müssen.
 Y.resample <- resample.y(df.ann$anzahl_diff, ann.timesteps)
 X.resample <- resample.X(df.ann[,4:30], ann.timesteps)
 df.resample <- cbind.data.frame(Y.resample, X.resample)
 colnames(df.resample)[1] <- c("anzahl_diff")
 
-# Extend resampled data set with datehour information
+# Erweitere Daten um Datumsinformation für späütere Auswertung
 df.resample$datehour <- df.ann$start_date[(ann.timesteps):nrow(df.ann)]
 df.resample <- df.resample[,c(56, 1:55)]
 
@@ -2594,7 +2626,7 @@ df.train    <- df.resample
 
 ```
 
-Lets do the same for the test data
+Einmal die stationären Daten einfügen und das Resamplen für die Testdaten
 
 ```{r}
 tsdiff_t <- as.data.frame(build_stationary(daily_neighborhood_test_nn$anzahl, k = ann.lags))
@@ -2606,30 +2638,37 @@ if (ann.lags > 0) {
 df.ann_t <- cbind.data.frame(daily_neighborhood_test_nn[c((ann.lags+2):nrow(daily_neighborhood_test_nn)),], tsdiff_t)
 df.ann_t <- df.ann_t[,c(1:2,29:30,3:28)]
 
-# Resampling stationary data because of exogenous variables for working with LSTM
-Y.resample <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
-X.resample <- resample.X(df.ann_t[,4:30], ann.timesteps)
-df.resample <- cbind.data.frame(Y.resample, X.resample)
-colnames(df.resample)[1] <- c("anzahl_diff")
+# Neusortieren von stationären Daten weil die Variablen exogen sein müssen.
+Y.resample_t <- resample.y(df.ann_t$anzahl_diff, ann.timesteps)
+X.resample_t <- resample.X(df.ann_t[,4:30], ann.timesteps)
+df.resample_t <- cbind.data.frame(Y.resample_t, X.resample_t)
+colnames(df.resample_t)[1] <- c("anzahl_diff")
 
-# Extend resampled data set with datehour information
-df.resample$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
-df.resample <- df.resample[,c(56, 1:55)]
+# Erweitere Daten um Datumsinformation für späütere Auswertung
+df.resample_t$datehour <- df.ann_t$start_date[(ann.timesteps):nrow(df.ann_t)]
+df.resample_t <- df.resample_t[,c(56, 1:55)]
 
-df.test     <- df.resample
+
+
+df.test     <- df.resample_t
 
 ```
+
+
+Nachdem jetzt die Trainingsdaten und die Testdaten fertig sind kann ich die Originaldaten speichern um später diese zu Nutzen um zu redifferenzieren. Danach normalisiere ich die Daten in den ausgewählten Spalten. Danach extrahiere ich die X und die Y Daten jeweils für die Trainings- und Testdaten
 
 
 ```{r}
 test.start <- as.POSIXct("2017-02-04")
 
-# Store origin y values as well as the prior y value of the first test y value
-y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_date >= test.start)] # origin interest rates
-y_prior_first_test <- daily_neighborhood_test_nn$anzahl[which(daily_neighborhood_test_nn$start_date == test.start)-1] # for invert differencing
+
+# Speichere original y Werte und den vorherrigen Wert des ersten Testwertes
+y_test <- daily_neighborhood_test_nn$anzahl[(daily_neighborhood_test_nn$start_date >= test.start)] # original Bike Werte
+y_prior_first_test <- daily_neighborhood_test_nn$anzahl[which(daily_neighborhood_test_nn$start_date == test.start)-1] # für das redifferencing
 
 
-# Normalize training and test data sets excluding datehour and dummy-variables
+
+# Normalisiere trainings und test Datensets bis auf das Datum und die Dummy-Features
 selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1", "avg_tripduration_1", "avg_age_1",
                                                   "maximum.temperature_1", "minimum.temperature_1", "average.temperature_1",
                                                   "precipitation_1", "snow.fall_1", "snow.depth_1",
@@ -2637,7 +2676,9 @@ selected_columns <- which(colnames(df.train)%in%c("anzahl_diff", "adiff_lag1_1",
                                                   "minimum.temperature_2", "average.temperature_2", "precipitation_2", "snow.fall_2",
                                                   "snow.depth_2"
                                                   ))
-nd <- normalize_data(df.train[,selected_columns], df.test[,c(2:11,22:30)])
+nd <- normalize_data(df.train[,selected_columns], df.test[,selected_columns])   #  c(2:11,22:30)
+
+
 
 
 df.train.norm <- df.train
@@ -2651,20 +2692,33 @@ df.test.norm[, selected_columns] <- nd$test
 df.test.norm <- df.test.norm[,-1]
 
 
-# Extract X and Y data
+
+
+# Extrahiere X und Y Daten
 X.train <- df.train.norm[,-1]
 Y.train <- df.train.norm[,1]
 
 X.test <- df.test.norm[,-1]
 Y.test <- df.test.norm[,1]
 
-# Build and fit LSTM model using k-fold cross validation
+
+```
+
+
+### Build Model
+
+Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt muss man verschiedene Konstellationen ausprobieren um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechuck habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch ein RMSE von 50 erreicht. Das ist ein durchschnittliche Fehlerquote von 50 Personen pro Tag bei im durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h. das Netz macht seine Vorhersage mit 98,72 % richtig. Beim trainieren ist mir aufgefallen das bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke das hier sogar noch bessere Ergebnisse möglich sind wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
+
+```{r}
+# Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
+                 validation_split = 0.05,
                  epochs = ann.epochs,
                  batchsize = c(NA,ann.batchsize),
-                 k.fold = 4, k.optimizer = "min",
-                 hidden = data.frame(c(128,64,32),c("relu")),
+                 k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(50,25),c("tanh")),
+                 dropout = c(0.5,0.1),
                  output_activation = "linear",
                  stateful = F, return_sequences = T,
                  loss = "mean_squared_error",
@@ -2674,61 +2728,35 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ```
 
+Speichere das Model
+
 ```{r}
-average_mae_history <- lstm$avg_qual
-
-require(ggplot2)
-ggplot(average_mae_history, aes(x = epoch, y = validation_qual)) +
-  labs(title = "LSTM: validation scores (MAE) per each epoch") +
-  xlab("Epoch") + ylab("Validation score") +
-  geom_line(color = "darkblue") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))
-
-ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
-  labs(title = "LSTM: validation scores (MAE) per each epoch") +
-  xlab("Epoch") + ylab("Validation score") +
-  geom_smooth(color = "darkblue") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))
+#lstm %>% save_model_hdf5("LSTM_Daily")
 ```
 
 
 
-```{r}
-# Forecast and quality
-## Predict price differences
-lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
-predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
-predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
-## invert differencing
-testseries <- c(y_prior_first_test, y_test)
-testseries <- testseries[-NROW(testseries)]
-predictions <- invert_differencing(predictiondiff, testseries)
-## RMSE
-daily_lstm_rmse <- rmse(testseries, predictions)
+Hier eine andere Variante, die zum Absturz von RStudio geführt hat.
+
+```{r eval=FALSE, include=FALSE}
+# Build and fit LSTM model using k-fold cross validation
+lstm <- fit_lstm(X = X.train, y = Y.train,
+                 timesteps = ann.timesteps,
+                 #validation_split = 0.05,
+                 epochs = ann.epochs,
+                 batchsize = c(NA,ann.batchsize),
+                 k.fold = 3, k.optimizer = "min",
+                 hidden = data.frame(c(128,64,32),c("relu")),
+                 #dropout = c(0.5,0.1),
+                 output_activation = "linear",
+                 stateful = F, return_sequences = T,
+                 loss = "mean_squared_error",
+                 optimizer = "Ftrl",
+                 metrics = c('mean_absolute_error'))
 
 
-# Plot test and forecast values
-graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
-require(ggplot2)
-ggplot() +
-  labs(title = "LSTM Forecasting for Bikeusers") +
-  xlab("Date") + ylab("Bikeuser") +
-  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
-  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.line = element_line(colour = "black"))
 ```
+
 
 
 ## Modellvergleich
@@ -2763,11 +2791,83 @@ ggplot() +
 
 ### Tägliche Vorhersage
 
+Im unteren Plot sieht man wie die Validation Score mit der Anzahl an Epochen abnimmt.
+
+```{r}
+
+average_mae_history <- lstm$avg_qual
+
+require(ggplot2)
+ggplot(average_mae_history, aes(x = epoch, y = validation_qual)) +
+  labs(title = "LSTM: validation scores (MAE) per each epoch") +
+  xlab("Epoch") + ylab("Validation score") +
+  geom_line(color = "darkblue") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+ggplot(data = average_mae_history, aes(x = epoch, y = validation_qual)) +
+  labs(title = "LSTM: validation scores (MAE) per each epoch") +
+  xlab("Epoch") + ylab("Validation score") +
+  geom_smooth(color = "darkblue") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
+```
+
+
+Nun machen wir die Vorhersage und berechnen den RMSE. Außerdem denormalisieren und dedifferenziren wir damit wir die echten Werte haben zum präsentieren.
+
+```{r}
+# Nutzerdifferenzen vorhersagen
+lstm.X.test <- as.LSTM.X(X.test, ann.timesteps)
+predictiondiff <- lstm$model %>% predict(lstm.X.test, batch_size = ann.batchsize)
+predictiondiff <- denormalize(predictiondiff[,1], nd$min[1], nd$max[1])
+
+# Differenzierung rückgängig machen
+testseries <- c(y_prior_first_test, y_test)
+testseries <- testseries[-NROW(testseries)]
+predictions <- invert_differencing(predictiondiff, testseries)
+
+# RMSE
+lstm_rmse <- rmse(testseries, predictions)
+lstm_rmse
+```
+Zuletzt werfen wir einen Blick auf den Plot. Dort sind die Vorhergesagten Nutzerzahlen und die echten Nutzerzahlen abgebildet. Man sieht das das Netz sehr gut die Schwankungen abbildet und auch sehr genau die Werte Vorhersagt.
+
+
+```{r}
+
+# Plot test and forecast values
+graphdata <- data.frame(Date = df.test$datehour, Value = testseries, Predictions = predictions)
+require(ggplot2)
+ggplot() +
+  labs(title = "LSTM Forecasting for Bikeusers") +
+  xlab("Date") + ylab("Bikeuser") +
+  geom_line(data = graphdata, aes(y = Value, x = Date), color = "darkblue") +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date), color = "red") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"))
+```
+
+Man sieht das die Graphen fast übereinander liegen und die Vorhersage mit den echten Nutzerzahlen fast identisch ist. Mit dieser Vorhersage könnte man nun die logistischen Operationen hinter einer Bikesharingflotte optimieren und so die Kundenzufriedenheit und Nutzbarkeit verbessern.
+
+
+
 ## Ausblick
 
-Die Lösung für einen Bezirk ist zufriedenstellend. Um eine Lösung für alle Bezirke oder sogar alle Stationen zu erstellen, gibt es mehrere Möglichkeiten. Die erste Möglichkeit ist, für jeden Bezirk ein eigenes LSTM Netz zu erstellen, das ähnlich dem hier Vorgestellten aufgebaut ist. Dies kann analog auf Stationsebene erfolgen, da so das Problem der zu Großen Datenmengen in einer Rechenoperation umgangen wird. Des Weiteren ist es möglich nur ein künstliches neuronales Netz zu erstellen, das zeitgleich eine Vorhersage für alle Bezirke trifft. Hierfür muss das Vorgehen geringfügig angepasst werden. Ist in dem hier vorgestellten Netz die Target-Variable ein Vektor, so muss diese in einem gemeinsamen Netz eine Matrix sein, bestehend den Nutzerzahlen aller Bezirke. So entstehen mehrere Output-Units in einem Netz. Diese Lösung erfordert allerdings mehr Rechenleistung, als ein LSTM für nur einen Bezirk. Theoretisch ist dies auch auf Stationsebene möglich. Dies würde eine enorme Rechenleistung erfordern. Um dennoch eine Umsetzung zu ermöglichen, kann es sinnvoll sein eine Cloudplattform einzubinden. So wird genügend Rechenleistung zur Verfügung gestellt, um die entstehenden Datenmengen zielorientiert zu verarbeiten und eine zeitnahe Lösung zu gewährleisten.
-
 Abschließend lassen sich beide Forschungsfragen zufriedenstellend beantworten. Sowohl tägliche, als auch stündliche Nutzerzahlen können mit Hilfe eines künstlichen neuronalen Netzes zuverlässig vorausgesagt werden. Dies ist bisher nur für einen Bezirk erfolgt, lässt sich aber auf alle anderen Bezirke, sowie Stationen übertragen. So kann eine genaue Vorhersage der Nutzerzahlen zur besseren Ressourcenplanung genutzt und die Kundenzufriedenheit gesteigert werden.
+
+Es liegt im Bereich des Möglichen ein einziges LSTM Netz zu erstellen, welches für alle Bezirke/Stationen die Vorhersagen trifft. Dazu muss eine mehrdimensionale Y- Matrix mit den Nutzeranzahlen erstellt werden und dem Netz zur Verfügung gestellt werden.
+
+
 
 ## Sources
 https://www.kaggle.com/mathijs/weather-data-in-new-york-city-2016
