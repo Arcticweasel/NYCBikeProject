@@ -89,17 +89,22 @@ knitr::opts_chunk$set(echo = FALSE)
   
 ## Datensatz für Analysen
 
+<div style="float: left; width: 50%;">
 - Für Analyse Zusammenführung von Wetter- und Bikesharingdaten
   - Datum und Stunde
   - Bezirk
   - Anzahl der Nutzer, die eine Rad ausleihen
   - Durchschnittliche Fahrtdauer und Alter
+</div>
+
+<div style="float: left; width: 50%;">
   - Wochen- und Feiertage
   - Monat und Quartal
   - Temperatur
   - Nierderschlagsmenge
   - Schneefall und -tiefe
   - Windgeschwindigkeit
+</div>
 
 # Visualisierungen
 
@@ -225,7 +230,7 @@ basemap %>%
 ![Überblick Datengrundlage Stündliche Analyse](Presentation/Überblick_Chelsea_Stündlich.PNG)
 
 ## Lineare Regression
-
+<div style="float: left; width: 50%;">
 - Alle Variablen mit einbezogen
 - Statistisch signifikant sind:
   - Stunde
@@ -233,13 +238,16 @@ basemap %>%
   - Wochentage Mittwoch und Freitag
   - Temperatur
   - Niederschlagsmenge
+</div>  
+<div style="float: left; width: 50%;">
 - R-Quadrat mit 29.4% sehr niedrig
 - RMSE nach Vorhersage mit Testdaten 152.69
   - Durchschnittlicher Fehler von rund 153 Nutzer pro Stunde
+</div>
 
 ## Lineare Regression
 
-```{r, fig.align='center', fig.height=10, fig.width=8}
+```{r, fig.align='center', fig.height=5, fig.width=9}
 ggplot() +
   labs(title = "Lineare Regression: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -286,7 +294,7 @@ hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
 - RMSE mit `r hourly_lstm_rmse` sehr niedrig
   - Durchschnittlicher Fehler von rund `r round(hourly_lstm_rmse)` Nutzern pro Stunde
 
-```{r, fig.align='center', fig.height=10, fig.width=8}
+```{r, fig.align='center', fig.height=4, fig.width=9}
 ggplot() +
   labs(title = "LSTM: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -310,7 +318,7 @@ ggplot() +
   
 ## Modellvergleich
 
-```{r, fig.align='center', fig.height=10, fig.width=8}
+```{r, fig.align='center', fig.height=5, fig.width=9}
 ggplot() +
   labs(title = "Vergleich Der Vorhersagen Für Stündliche Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
@@ -359,7 +367,7 @@ ggplot() +
   
 ## Lineare Regression
 
-```{r, fig.align='center', fig.height=10, fig.width=8}
+```{r, fig.align='center', fig.height=5, fig.width=9}
 ggplot() +
   labs(title = "Lineare Regression: Vorhersage Täglicher Nutzerzahlen") +
   xlab("Date") + ylab("Anzahl") +
@@ -403,13 +411,22 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ## Long Short Term Memory Netz
 
-- RMSE mit `r lstm_rmse` niedrig
+- RMSE mit `r lstm_rmse`  niedrig
   - Durchschnittlicher Fehler von rund `r round(lstm_rmse)` Nutzern pro Tag
   
-```{r, fig.align='center', fig.height=10, fig.width=8}
-#hier fehlt die Grafik für das LSTM
+```{r, fig.align='center', fig.height=4, fig.width=9}
+ggplot() +
+  labs(title = "LSTM Forecasting For Bikeusers") +
+  xlab("Date") + ylab("Bikeuser") +
+  geom_line(data = graphdata, aes(y = Value, x = Date, color = "black")) +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage"))
 ```
-
 
 ## Modellvergleich
 
@@ -420,18 +437,22 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 
 ## Modellvergleich
 
-```{r, fig.align='center', fig.height=10, fig.width=8}
-#Hier fehlt die Grafik für den Modellvergleich
+```{r, fig.align='center', fig.height=5, fig.width=9}
+ggplot() +
+  labs(title = "LSTM Forecasting For Bikeusers") +
+  xlab("Date") + ylab("Bikeuser") +
+  geom_line(data = graphdata, aes(y = Value, x = Date, color = "black")) +
+  geom_line(data = graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
+  geom_line(data = graphdata, aes(x = Date, y = LinReg, color = "orange")) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black")) +
+  scale_color_manual(name = "Legende", values = c("black"="black", "cadetblue" ="cadetblue", "orange" = "orange"),labels = c("Tatsächliche Nutzer", "LSTM Vorhersage", "Lineare Regression Vorhersage"))
 ```
 
 # Ausblick
-
-## Ausblick
-
-- Forschungsfragen können positiv beantwortet werden
-- Genaue und sinnvolle Prognose möglich
-- Optimiert Ressourcenplanung
-- Steigert Kundenzufriedenheit
 
 ## Ausblick
 
@@ -441,5 +462,12 @@ lstm <- fit_lstm(X = X.train, y = Y.train,
 - Vorhersage aller Bezirke/Stationen in einem Netz
   - Lösbar durch mehrere Output-Units
 - Problem der Rechenkapazität durch Cloud Computing lösbar
+
+## Ausblick
+
+- Forschungsfragen können positiv beantwortet werden
+- Genaue und sinnvolle Prognose möglich
+- Optimiert Ressourcenplanung
+- Steigert Kundenzufriedenheit
 
 # Vielen Dank Für Ihre Aufmerksamkeit!
