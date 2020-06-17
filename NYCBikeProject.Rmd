@@ -2362,7 +2362,9 @@ Als Maßeinheit für Fehler wird der Mean Squared Error (MSE) gewählt. Zusätzl
 
 Der Optimierungsalgorithmus legt fest wie genau das LSTM Netz lernt. Hier hat der Follow-The-Regularized-Leader, kurz FTRL, Algorithmus die mit Abstand besten Ergebnisse geliefert. Dieser wird in der Praxis häufig für large-scale Probleme verwendet, wie z.B. das Vorhersagen von Klickzahlen auf Werbebanner.
 
-```{r, results='hide'}
+
+```{r, results="hide"}
+
 # Stündliches LSTM trainieren
 hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
                  timesteps = hourly.ann.timesteps,
@@ -2606,7 +2608,7 @@ Y.test <- df.test.norm[,1]
 
 Mit der Funktion fit_lstm kann ich nun das LSTM aufbauen. Hier habe ich zusätzlich zu der Epochengröße und der Batchsize noch viele weitere Hyperparameter. Man kann ein validaton_split, eine k.fold crossvalidierung, dropout layer, hidden layers, outputlayer oder den optimizer einstellen. Da es bei neuronalen Netzen keinen einzigen richtigen Weg gibt, muss man verschiedene Konstellationen ausprobieren, um die richtige Wahl der Hyperparameter zu finden. Bei dem Netz im unteren Codechunk habe ich mich für einen Mix von verschiedenen Hyperparametern entschieden und habe dadurch einen RMSE von 50 erreicht. Das ist eine durchschnittliche Fehlerquote von 50 Personen pro Tag, bei im Durchschnitt 3900 Personen pro Tag eine Abweichung von 1,28%. D.h., dass Netz macht seine Vorhersage mit 98,72 % richtig. Beim Trainieren ist mir aufgefallen, dass bei größerer Epochenanzahl auch bessere Ergebnisse zu erzielen sind. Ich denke, dass hier sogar noch bessere Ergebnisse möglich sind, wenn man mit mehr Rechenpower in der Cloud diese Netze laufen lässt. 
 
-```{r}
+```{r, results="hide"}
 # Build and fit LSTM model using k-fold cross validation    rmse = 50 // 35 // 63
 lstm <- fit_lstm(X = X.train, y = Y.train,
                  timesteps = ann.timesteps,
