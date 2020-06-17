@@ -2362,7 +2362,7 @@ Als Maßeinheit für Fehler wird der Mean Squared Error (MSE) gewählt. Zusätzl
 
 Der Optimierungsalgorithmus legt fest wie genau das LSTM Netz lernt. Hier hat der Follow-The-Regularized-Leader, kurz FTRL, Algorithmus die mit Abstand besten Ergebnisse geliefert. Dieser wird in der Praxis häufig für large-scale Probleme verwendet, wie z.B. das Vorhersagen von Klickzahlen auf Werbebanner.
 
-```{r}
+```{r, results='hide'}
 # Stündliches LSTM trainieren
 hourly_lstm <- fit_lstm(X = hourly.X.train, y = hourly.Y.train,
                  timesteps = hourly.ann.timesteps,
@@ -2404,7 +2404,7 @@ Der RMSE verändert sich geringfügig mit jedem Mal, das das Netz lernt, bewegt 
 # Visualisierung der Ergebnisse
 hourly_graphdata <- data.frame(Date = hourly.df.test$start_datetime, Value = hourly_testseries, Predictions = hourly_predictions, LinReg = hourly_chelsea_lin_reg_predictions[12:NROW(hourly_chelsea_lin_reg_predictions)])
 ggplot() +
-  labs(title = "LSTM Vorhersage Stündliche Nutzerzahlen") +
+  labs(title = "LSTM: Vorhersage Stündlicher Nutzerzahlen") +
   xlab("Date") + ylab("User Count") +
   geom_line(data = hourly_graphdata, aes(y = Value, x = Date, color = "black")) +
   geom_line(data = hourly_graphdata, aes(y = Predictions, x = Date, color = "cadetblue")) +
